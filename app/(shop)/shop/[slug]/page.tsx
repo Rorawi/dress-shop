@@ -1,0 +1,42 @@
+import Link from "next/link";
+import { notFound } from "next/navigation";
+import CatalogImageGallery from "@/components/storefront/CatalogImageGallery";
+import CatalogProductGrid from "@/components/storefront/CatalogProductGrid";
+import ProductPurchasePanel from "@/components/storefront/ProductPurchasePanel";
+import { getCatalogProducts, getStoreSettings } from "@/lib/catalog";
+
+const money = (amount: number, currency: string) => new Intl.NumberFormat("en-GH", { style: "currency", currency, maximumFractionDigits: 2 }).format(amount);
+
+export default async function ProductPage({ params }: { params: Promise<{ slug: string }> }) {
+  const [{ slug }, products, settings] = await Promise.all([params, getCatalogProducts(), getStoreSettings()]);
+  const product = products.find((item) => item.slug === slug);
+  if (!product) notFound();
+
+  const related = products.filter((item) => item.id !== product.id && (
+    item.subcategory?.slug === product.subcategory?.slug ||
+    item.category.department === product.category.department
+  )).slice(0, 4);
+  const discount = product.compareAtPrice && product.compareAtPrice > product.price
+    ? Math.round((1 - product.price / product.compareAtPrice) * 100)
+    : null;
+
+  return <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 sm:py-9 lg:px-8">
+    <div className="mb-6 flex flex-wrap items-center gap-2 text-[11px] text-[#8B8490]"><Link href="/" className="hover:text-[#55239A]">Home</Link><span>/</span><Link href="/shop" className="hover:text-[#55239A]">Shop</Link><span>/</span><Link href={`/shop?department=${product.category.department}`} className="capitalize hover:text-[#55239A]">{product.category.name}</Link><span>/</span><span className="max-w-[180px] truncate text-[#625B68]">{product.name}</span></div>
+    <div className="grid items-start gap-8 md:grid-cols-2 md:gap-10 lg:gap-16">
+      <CatalogImageGallery images={product.images} productName={product.name} discreet={product.discreetImage} />
+      <div className="md:sticky md:top-32">
+        <p className="mb-3 text-[10px] font-semibold uppercase tracking-[.2em] text-[#8B5BC7]">{product.brand?.name ?? product.category.name}{product.subcategory ? ` · ${product.subcategory.name}` : ""}</p>
+        <h1 className="font-[family-name:var(--font-playfair)] text-3xl font-medium leading-tight text-[#17141C] sm:text-4xl lg:text-[2.7rem]">{product.name}</h1>
+        <div className="mt-4 flex flex-wrap items-center gap-3"><span className="text-xl font-semibold text-[#17141C]">{money(product.price, settings.currency)}</span>{product.compareAtPrice && product.compareAtPrice > product.price && <><span className="text-base text-[#8B8490] line-through">{money(product.compareAtPrice, settings.currency)}</span>{discount && <span className="rounded-full bg-[#F4EAFB] px-3 py-1 text-[10px] font-semibold text-[#55239A]">Save {discount}%</span>}</>}</div>
+        <p className="mt-5 text-sm leading-7 text-[#625B68]">{product.description}</p>
+        <div className="my-6"><ProductPurchasePanel product={product} settings={settings} /></div>
+        <div className="divide-y divide-[#E6E0EB] border-y border-[#E6E0EB]">
+          <details className="group py-4" open><summary className="flex cursor-pointer list-none items-center justify-between text-sm font-semibold">Product details<span className="text-[#8B5BC7] transition group-open:rotate-45">+</span></summary><div className="space-y-2 pt-3 text-xs leading-5 text-[#625B68]"><p>{product.description}</p>{product.style && <p><strong className="font-medium text-[#17141C]">Style:</strong> {product.style}</p>}<p><strong className="font-medium text-[#17141C]">Category:</strong> {product.category.name}{product.subcategory ? ` / ${product.subcategory.name}` : ""}</p>{product.gender && <p><strong className="font-medium text-[#17141C]">Fit:</strong> {product.gender === "unisex" ? "Unisex" : product.gender}</p>}</div></details>
+          <details className="group py-4"><summary className="flex cursor-pointer list-none items-center justify-between text-sm font-semibold">Care & fabric<span className="text-[#8B5BC7] transition group-open:rotate-45">+</span></summary><p className="pt-3 text-xs leading-5 text-[#625B68]">For fabric composition and care advice, message us before ordering and we’ll confirm the details for this item.</p></details>
+          <details className="group py-4"><summary className="flex cursor-pointer list-none items-center justify-between text-sm font-semibold">Delivery & returns<span className="text-[#8B5BC7] transition group-open:rotate-45">+</span></summary><p className="pt-3 text-xs leading-5 text-[#625B68]">Delivery options, timing and any return arrangements are confirmed directly with you on WhatsApp before your order is finalized.</p></details>
+        </div>
+      </div>
+    </div>
+    {related.length > 0 && <section className="mt-16 border-t border-[#E6E0EB] pt-12 sm:mt-24 sm:pt-16"><div className="mb-7"><p className="mb-2 text-[10px] font-semibold uppercase tracking-[.2em] text-[#8B5BC7]">Keep looking</p><h2 className="font-[family-name:var(--font-playfair)] text-3xl font-medium">You might also like</h2></div><CatalogProductGrid products={related} currency={settings.currency} /></section>}
+  </div>;
+}
