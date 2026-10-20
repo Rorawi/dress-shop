@@ -1,20 +1,18 @@
 import Image from "next/image";
 import Link from "next/link";
-import { ArrowRight, ArrowUpRight, Sparkles } from "lucide-react";
+import { ArrowRight, Sparkles } from "lucide-react";
 import CatalogProductGrid from "@/components/storefront/CatalogProductGrid";
+import CategorySlider from "@/components/storefront/CategorySlider";
 import StorefrontFrame from "@/components/storefront/StorefrontFrame";
 import { getCatalogData } from "@/lib/catalog";
 
 const categories = [
-  { slug: "boxers", label: "Boxers", description: "Reliable everyday comfort", image: "photo-1551232864-3f0890e580d9" },
-  { slug: "singlets", label: "Singlets", description: "Easy base layers", image: "photo-1598033129183-c4f50c736f10" },
-  { slug: "t-shirts", label: "Plain T-shirts", description: "Keep the essentials simple", image: "photo-1521572163474-6864f9cf17ab" },
-  { slug: "shirts", label: "Shirts", description: "Easy everyday layers", image: "photo-1598033129183-c4f50c736f10" },
+  { slug: "boxers", label: "Boxers", description: "A signature in everyday comfort", image: "photo-1618354691373-d851c5c3a990" },
+  { slug: "singlets", label: "Singlets", description: "Easy, unisex base layers", image: "photo-1627225924765-552d49cf47ad" },
+  { slug: "t-shirts", label: "Plain T-shirts", description: "The everyday staple", image: "photo-1521572163474-6864f9cf17ab" },
   { slug: "matching-sets", label: "Matching sets", description: "Coordinated from top to bottom", image: "photo-1496747611176-843222e1e57c" },
   { slug: "thrift-finds", label: "Thrift Finds", description: "One-off pieces, picked with care", image: "photo-1490481651871-ab68de25d43d", tag: "Thrift Finds" },
-  { slug: "dresses", label: "Dresses", description: "Find your moment", image: "photo-1496747611176-843222e1e57c" },
-  { slug: "polos", label: "Polos", description: "Made for the everyday", image: "photo-1625910513413-5fc45e21c8d4" },
-  { slug: "underwear", label: "Intimates", description: "Comfort, close to you", image: "photo-1551232864-3f0890e580d9", department: "underwear" },
+  { slug: "womens-edit", label: "Women's Edit", description: "Fresh finds chosen with her in mind", image: "photo-1539008835657-9e8e9680c956", gender: "women" },
 ];
 
 export default async function HomePage() {
@@ -46,12 +44,7 @@ export default async function HomePage() {
 
     <section className="border-b border-[#E6E0EB] bg-white py-14 sm:py-16">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-        <div className="mb-7 flex items-end justify-between"><div><p className="mb-2 text-[10px] font-semibold uppercase tracking-[.2em] text-[#8B5BC7]">Explore by edit</p><h2 className="font-[family-name:var(--font-playfair)] text-3xl font-medium sm:text-4xl">Find your kind of style</h2></div><Link href="/shop" className="hidden items-center gap-2 pb-1 text-xs font-semibold text-[#55239A] sm:inline-flex">See everything <ArrowRight size={14} /></Link></div>
-        <div className="grid grid-cols-2 gap-3 md:grid-cols-4 md:gap-4">{categories.map((category) => <Link key={category.slug} href={category.tag ? `/shop?tag=${encodeURIComponent(category.tag)}` : category.department ? `/shop?department=${category.department}` : `/shop?category=${category.slug}`} className="group relative aspect-[4/4.8] overflow-hidden rounded-2xl bg-[#E9E3EC] sm:rounded-3xl">
-          <Image src={`https://images.unsplash.com/${category.image}?auto=format&fit=crop&w=900&q=85`} alt={category.label} fill sizes="(max-width:768px) 50vw,25vw" className="object-cover transition duration-700 group-hover:scale-105" />
-          <div className="absolute inset-0 bg-gradient-to-t from-black/65 via-black/5 to-transparent" />
-          <div className="absolute inset-x-0 bottom-0 p-4 text-white sm:p-5"><p className="mb-1 text-[9px] font-semibold uppercase tracking-[.15em] text-white/70 sm:text-[10px]">{category.description}</p><div className="flex items-end justify-between gap-2"><h3 className="font-[family-name:var(--font-playfair)] text-lg sm:text-2xl">{category.label}</h3><span className="flex h-8 w-8 items-center justify-center rounded-full bg-white/20 backdrop-blur transition group-hover:bg-white group-hover:text-[#55239A]"><ArrowUpRight size={16} /></span></div></div>
-        </Link>)}</div>
+        <CategorySlider categories={categories} />
       </div>
     </section>
 
