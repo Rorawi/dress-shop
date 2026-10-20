@@ -1,7 +1,5 @@
 import { Resend } from "resend";
 
-const resend = new Resend(process.env.RESEND_API_KEY);
-
 export async function sendOrderConfirmation({
   to,
   customerName,
@@ -15,6 +13,10 @@ export async function sendOrderConfirmation({
   items: { name: string; size: string; quantity: number; price: number }[];
   total: number;
 }) {
+  const apiKey = process.env.RESEND_API_KEY;
+  if (!apiKey) throw new Error("RESEND_API_KEY is not configured");
+
+  const resend = new Resend(apiKey);
   const itemsHtml = items
     .map(
       (item) =>

@@ -13,13 +13,14 @@ on conflict (slug) do update set
 insert into public.subcategories (category_id, name, slug, sort_order)
 select c.id, item.name, item.slug, item.sort_order
 from (values
-  ('clothing', 'Dresses', 'dresses', 0),
+  ('clothing', 'T-shirts', 't-shirts', 0),
   ('clothing', 'Shirts', 'shirts', 1),
-  ('clothing', 'Polos', 'polos', 2),
-  ('clothing', 'T-shirts', 't-shirts', 3),
-  ('clothing', 'Trousers', 'trousers', 4),
-  ('clothing', 'Shorts', 'shorts', 5),
-  ('clothing', 'Jackets', 'jackets', 6),
+  ('clothing', 'Matching sets', 'matching-sets', 2),
+  ('clothing', 'Dresses', 'dresses', 3),
+  ('clothing', 'Polos', 'polos', 4),
+  ('clothing', 'Trousers', 'trousers', 5),
+  ('clothing', 'Shorts', 'shorts', 6),
+  ('clothing', 'Jackets', 'jackets', 7),
   ('underwear', 'Boxers', 'boxers', 0),
   ('underwear', 'Singlets', 'singlets', 1),
   ('underwear', 'Briefs', 'briefs', 2),
@@ -46,7 +47,8 @@ values
   ('New Arrival', 'new-arrival', 'collection', 0),
   ('Popular', 'popular', 'collection', 1),
   ('Christmas', 'christmas', 'seasonal', 2),
-  ('Everyday', 'everyday', 'general', 3)
+  ('Everyday', 'everyday', 'general', 3),
+  ('Thrift Finds', 'thrift-finds', 'collection', 4)
 on conflict (slug) do update set
   name = excluded.name,
   kind = excluded.kind,

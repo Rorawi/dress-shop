@@ -10,6 +10,7 @@ type Filters = Record<string, string | undefined>;
 
 const titleCase = (value: string) => value.replaceAll("-", " ").replace(/\b\w/g, (letter) => letter.toUpperCase());
 const normalize = (value: string) => value.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim();
+const preferredCategoryOrder = ["boxers", "singlets", "t-shirts", "shirts", "matching-sets", "jumpsuits"];
 
 function editDistance(a: string, b: string) {
   const row = Array.from({ length: b.length + 1 }, (_, index) => index);
@@ -39,7 +40,14 @@ export default function ProductListing({ products, initialFilters = {}, currency
   const [showFilters, setShowFilters] = useState(false);
   useEffect(() => setFilters(initialFilters), [initialFilters]);
   const brands = unique(products.map((product) => product.brand?.name ?? ""));
-  const categories = unique(products.map((product) => product.subcategory?.slug ?? ""));
+  const categories = unique(products.map((product) => product.subcategory?.slug ?? "")).sort((a, b) => {
+    const aPriority = preferredCategoryOrder.indexOf(a);
+    const bPriority = preferredCategoryOrder.indexOf(b);
+    if (aPriority === -1 && bPriority === -1) return a.localeCompare(b);
+    if (aPriority === -1) return 1;
+    if (bPriority === -1) return -1;
+    return aPriority - bPriority;
+  });
   const colors = unique(products.flatMap((product) => product.variants.map((variant) => variant.color)));
   const sizes = unique(products.flatMap((product) => product.variants.map((variant) => variant.size)));
   const sleeves = unique(products.map((product) => product.sleeveLength ?? ""));
@@ -82,7 +90,10 @@ export default function ProductListing({ products, initialFilters = {}, currency
     });
   }, [filters, products]);
 
-  const heading = filters.department === "underwear" ? "Underwear & intimates" : filters.department === "clothing" ? "Clothing" : filters.category ? titleCase(filters.category) : "The collection";
+  const heading = filters.tag === "Thrift Finds" ? "Thrift Finds" : filters.department === "underwear" ? "Underwear & intimates" : filters.department === "clothing" ? "Clothing" : filters.category ? titleCase(filters.category) : "The collection";
+  const emptyMessage = filters.tag === "Thrift Finds"
+    ? "No thrift pieces are listed just yet. Check back soon."
+    : "No products found. Try another search or clear some filters.";
 
   const filterControls = <div className="space-y-5">
     <label className="block text-xs font-semibold uppercase tracking-wider text-[#625B68]">Department<select value={filters.department ?? ""} onChange={(event) => update("department", event.target.value)} className="mt-2 w-full rounded-xl border border-[#E6E0EB] bg-white px-3 py-3 text-sm font-normal normal-case tracking-normal text-[#17141C] outline-none focus:border-[#8B5BC7]"><option value="">All departments</option><option value="clothing">Clothing</option><option value="underwear">Underwear</option></select></label>
@@ -116,7 +127,7 @@ export default function ProductListing({ products, initialFilters = {}, currency
         <aside className={`${showFilters ? "block" : "hidden"} lg:block`}><div className="sticky top-28 rounded-2xl border border-[#EEEAF0] bg-white p-5"><div className="mb-5 flex items-center justify-between"><h2 className="font-[family-name:var(--font-playfair)] text-xl">Refine</h2><span className="text-[10px] text-[#8B8490]">{currency}</span></div>{filterControls}</div></aside>
         <div><div className="mb-6 hidden items-center justify-between lg:flex"><p className="text-xs text-[#625B68]">Showing <span className="font-semibold text-[#17141C]">{filtered.length}</span> of {products.length} pieces</p><label className="flex items-center gap-2 text-xs text-[#625B68]">Sort by <select value={filters.sort ?? "newest"} onChange={(event) => update("sort", event.target.value)} className="rounded-full border border-[#E6E0EB] bg-white px-4 py-2.5 text-xs text-[#17141C] outline-none"><option value="newest">Newest</option><option value="popular">Popular</option><option value="price-low">Price: low to high</option><option value="price-high">Price: high to low</option></select></label></div>
           {filters.department === "underwear" && <div className="mb-6 flex items-start gap-3 rounded-2xl bg-[#F8F5FA] px-4 py-3 text-xs leading-5 text-[#625B68]"><span className="mt-0.5 font-semibold text-[#55239A]">18+</span><p>Intimate product images are blurred. Choose “I’m 18+ — show image” on a product image to reveal them for this browser.</p></div>}
-          <CatalogProductGrid products={filtered} currency={currency} />
+          <CatalogProductGrid products={filtered} emptyMessage={emptyMessage} currency={currency} />
         </div>
       </div>
     </div>
