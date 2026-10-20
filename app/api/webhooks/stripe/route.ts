@@ -97,11 +97,16 @@ export async function POST(req: NextRequest) {
         to: meta.customerEmail,
         customerName: meta.customerName,
         orderId: order.id,
-        items: order.items.map((i) => ({
-          name: i.product.name,
-          size: i.size,
-          quantity: i.quantity,
-          price: Number(i.priceAtPurchase),
+        items: order.items.map((item: {
+          product: { name: string };
+          size: string;
+          quantity: number;
+          priceAtPurchase: unknown;
+        }) => ({
+          name: item.product.name,
+          size: item.size,
+          quantity: item.quantity,
+          price: Number(item.priceAtPurchase),
         })),
         total,
       }).catch((e) => console.error("[EMAIL] Failed to send confirmation:", e));
