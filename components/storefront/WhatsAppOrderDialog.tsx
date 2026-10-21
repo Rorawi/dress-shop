@@ -31,7 +31,10 @@ export default function WhatsAppOrderDialog({ items, settings, label = "Order on
     const message = [
       `Hello ${settings.shopName}, I’d like to place an order:`,
       "",
-      ...items.map((item, index) => `${index + 1}. ${item.name} — ${item.size}, ${item.color} × ${item.quantity} = ${money(item.price * item.quantity, settings.currency)}\n   ${window.location.origin}/shop/${item.slug}`),
+      ...items.map((item, index) => {
+        const options = [item.size.toLowerCase() !== "one size" ? item.size : "", item.color.toLowerCase() !== "default" ? item.color : ""].filter(Boolean).join(", ");
+        return `${index + 1}. ${item.name}${options ? ` — ${options}` : ""} × ${item.quantity} = ${money(item.price * item.quantity, settings.currency)}\n   ${window.location.origin}/shop/${item.slug}`;
+      }),
       "",
       `Subtotal: ${money(subtotal, settings.currency)}`,
       `Name: ${name.trim() || "Not provided"}`,
@@ -57,7 +60,10 @@ export default function WhatsAppOrderDialog({ items, settings, label = "Order on
             <button onClick={() => setOpen(false)} aria-label="Close order form" className="rounded-full p-2 hover:bg-[#F5F1F8]"><X size={20} /></button>
           </div>
           <div className="mb-5 max-h-36 space-y-2 overflow-y-auto rounded-2xl bg-[#FCFBFD] p-4">
-            {items.map((item) => <div key={item.variantId} className="flex justify-between gap-4 text-sm"><span className="text-[#625B68]">{item.name} · {item.size} · {item.color} × {item.quantity}</span><span className="shrink-0 font-medium">{money(item.price * item.quantity, settings.currency)}</span></div>)}
+            {items.map((item) => {
+              const options = [item.size.toLowerCase() !== "one size" ? item.size : "", item.color.toLowerCase() !== "default" ? item.color : ""].filter(Boolean).join(" · ");
+              return <div key={item.variantId} className="flex justify-between gap-4 text-sm"><span className="text-[#625B68]">{item.name}{options ? ` · ${options}` : ""} × {item.quantity}</span><span className="shrink-0 font-medium">{money(item.price * item.quantity, settings.currency)}</span></div>;
+            })}
             <div className="flex justify-between border-t border-[#E6E0EB] pt-2 text-sm font-semibold"><span>Subtotal</span><span>{money(subtotal, settings.currency)}</span></div>
           </div>
           <form onSubmit={submit} className="space-y-4">

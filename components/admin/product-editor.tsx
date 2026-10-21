@@ -7,6 +7,7 @@ import { useRouter } from "next/navigation";
 import { ArrowLeft, ImagePlus, LoaderCircle, Plus, Trash2, X } from "lucide-react";
 import { createSupabaseBrowserClient } from "@/lib/supabase/browser";
 import { optimizePhoto } from "@/lib/admin/image-utils";
+import { toCatalogColorOption } from "@/lib/catalog-colors";
 import type { AdminBrandOption, AdminCategoryOption, AdminSubcategoryOption, AdminTagOption, ProductEditorRecord } from "@/components/admin/types";
 
 type Props = {
@@ -19,11 +20,13 @@ type Props = {
 type NewPhoto = { key: string; file: File; preview: string };
 type VariantDraft = { localId: string; size: string; color: string; stock: string };
 
-const AVAILABLE_SIZES = ["S", "M", "L", "XL", "2XL", "3XL", "4XL", "5XL"] as const;
-type StandardSize = typeof AVAILABLE_SIZES[number];
+const CLOTHING_SIZES = ["S", "M", "L", "XL", "2XL", "3XL", "4XL", "5XL"] as const;
+const SHOE_SIZES = ["UK 3", "UK 4", "UK 5", "UK 6", "UK 7", "UK 8", "UK 9", "UK 10", "UK 11", "UK 12"] as const;
+const STANDARD_SIZES = [...CLOTHING_SIZES, ...SHOE_SIZES] as const;
+type StandardSize = typeof STANDARD_SIZES[number];
 
 function isStandardSize(size: string): size is StandardSize {
-  return AVAILABLE_SIZES.some((availableSize) => availableSize === size);
+  return STANDARD_SIZES.some((availableSize) => availableSize === size);
 }
 
 function toSlug(value: string) {
@@ -42,6 +45,11 @@ export default function ProductEditor({ categories, subcategories, brands, tags,
   const [slugEdited, setSlugEdited] = useState(Boolean(product?.slug));
   const [description, setDescription] = useState(product?.description ?? "");
   const [categoryId, setCategoryId] = useState(product?.category_id ?? categories.find((category) => category.is_active)?.id ?? categories[0]?.id ?? "");
+  const selectedCategory = categories.find((category) => category.id === categoryId);
+  const isBagProduct = selectedCategory?.department === "bags";
+  const isShoeProduct = selectedCategory?.department === "shoes";
+  const availableSizes = isShoeProduct ? SHOE_SIZES : CLOTHING_SIZES;
+  const availableSizeSet = new Set<string>(availableSizes);
   const [subcategoryId, setSubcategoryId] = useState(product?.subcategory_id ?? "");
   const [brandId, setBrandId] = useState(product?.brand_id ?? "");
   const [gender, setGender] = useState(product?.gender ?? "unisex");
@@ -58,6 +66,10 @@ export default function ProductEditor({ categories, subcategories, brands, tags,
       ? [{ localId: variant.id ?? `saved-${index}`, size, color: variant.color, stock: String(variant.stock) }]
       : [];
   }));
+  const [bagStock, setBagStock] = useState(() => {
+    const oneSizeVariants = (product?.variants ?? []).filter((variant) => variant.size.trim().toLowerCase() === "one size");
+    return oneSizeVariants.length ? String(oneSizeVariants.reduce((total, variant) => total + Number(variant.stock || 0), 0)) : "";
+  });
   const hasLegacySizes = (product?.variants ?? []).some((variant) => !isStandardSize(variant.size.trim().toUpperCase()));
   const [selectedTagIds, setSelectedTagIds] = useState<string[]>(product?.tagIds ?? []);
   const [images, setImages] = useState(product?.images ?? []);
@@ -65,6 +77,16 @@ export default function ProductEditor({ categories, subcategories, brands, tags,
   const [pending, setPending] = useState(false);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
+
+  function changeCategory(nextCategoryId: string) {
+    const nextCategory = categories.find((category) => category.id === nextCategoryId);
+    if (nextCategory?.department !== selectedCategory?.department) {
+      setVariants([]);
+      setBagStock("");
+    }
+    setCategoryId(nextCategoryId);
+    if (subcategories.find((subcategory) => subcategory.id === subcategoryId)?.category_id !== nextCategoryId) setSubcategoryId("");
+  }
 
   function addPhotos(files: FileList | null) {
     if (!files?.length) return;
@@ -105,17 +127,24 @@ export default function ProductEditor({ categories, subcategories, brands, tags,
       setError("Add a product name, category, valid price, and a compare-at price that is at least the product price.");
       return;
     }
-    const validVariants = variants.map((variant) => ({
-      size: variant.size.trim().toUpperCase(),
-      color: variant.color.trim(),
-      stock: variant.stock.trim() === "" ? Number.NaN : Number(variant.stock),
-    }));
-    if (validVariants.length === 0) {
+    const validVariants = isBagProduct
+      ? [{ size: "One size", color: "Default", stock: bagStock.trim() === "" ? Number.NaN : Number(bagStock) }]
+      : variants.map((variant) => ({
+        size: variant.size.trim().toUpperCase(),
+        color: variant.color.trim(),
+        stock: variant.stock.trim() === "" ? Number.NaN : Number(variant.stock),
+      }));
+    if (isBagProduct && (!Number.isInteger(validVariants[0].stock) || validVariants[0].stock < 0)) {
+      setPending(false);
+      setError("Enter a whole-number stock count for this bag.");
+      return;
+    }
+    if (!isBagProduct && validVariants.length === 0) {
       setPending(false);
       setError("Select at least one size and enter its stock count before saving.");
       return;
     }
-    if (validVariants.some((variant) => !isStandardSize(variant.size) || !variant.color || !Number.isInteger(variant.stock) || variant.stock < 0)) {
+    if (validVariants.some((variant) => (!isBagProduct && !availableSizeSet.has(variant.size)) || !variant.color || !Number.isInteger(variant.stock) || variant.stock < 0)) {
       setPending(false);
       setError("Add a colour and a whole-number stock count for every selected size option.");
       return;
@@ -233,7 +262,7 @@ export default function ProductEditor({ categories, subcategories, brands, tags,
               <label className={`${labelClass} sm:col-span-2`}>Product name<input className={fieldClass} value={name} onChange={(event) => { setName(event.target.value); if (!slugEdited) setSlug(toSlug(event.target.value)); }} placeholder="e.g. Soft cotton boxer brief" /></label>
               <label className={`${labelClass} sm:col-span-2`}>URL slug<input className={fieldClass} value={slug} onChange={(event) => { setSlug(event.target.value); setSlugEdited(true); }} placeholder="product-name" /></label>
               <label className={`${labelClass} sm:col-span-2`}>Description<textarea className={`${fieldClass} min-h-28 resize-y`} value={description} onChange={(event) => setDescription(event.target.value)} placeholder="Tell shoppers what makes this piece special." /></label>
-              <label className={labelClass}>Category<select className={fieldClass} value={categoryId} onChange={(event) => { setCategoryId(event.target.value); if (subcategories.find((subcategory) => subcategory.id === subcategoryId)?.category_id !== event.target.value) setSubcategoryId(""); }}><option value="">Choose a category</option>{categories.map((category) => <option key={category.id} value={category.id}>{category.name}{category.is_active ? "" : " (inactive)"}</option>)}</select></label>
+              <label className={labelClass}>Category<select className={fieldClass} value={categoryId} onChange={(event) => changeCategory(event.target.value)}><option value="">Choose a category</option>{categories.map((category) => <option key={category.id} value={category.id}>{category.name}{category.is_active ? "" : " (inactive)"}</option>)}</select></label>
               <label className={labelClass}>Shop section<select className={fieldClass} value={subcategoryId} onChange={(event) => setSubcategoryId(event.target.value)}><option value="">Choose a section</option>{subcategories.filter((subcategory) => subcategory.category_id === categoryId).map((subcategory) => <option key={subcategory.id} value={subcategory.id}>{subcategory.name}{subcategory.is_active ? "" : " (inactive)"}</option>)}</select></label>
               <label className={labelClass}>Brand<select className={fieldClass} value={brandId} onChange={(event) => setBrandId(event.target.value)}><option value="">No brand</option>{brands.map((brand) => <option key={brand.id} value={brand.id}>{brand.name}</option>)}</select></label>
               <label className={labelClass}>For<select className={fieldClass} value={gender ?? "unisex"} onChange={(event) => setGender(event.target.value as typeof gender)}><option value="unisex">Unisex</option><option value="women">Women</option><option value="men">Men</option><option value="kids">Kids</option></select></label>
@@ -256,27 +285,29 @@ export default function ProductEditor({ categories, subcategories, brands, tags,
           </div>
 
           <div className="rounded-2xl border border-[#ece6f0] bg-white p-5 sm:p-7">
-            <div><h2 className="text-2xl">Sizes and stock</h2><p className="mt-1 text-sm text-[#817888]">Select the sizes you carry. Shoppers can choose from these sizes on the product page.</p></div>
-            {hasLegacySizes && <p className="mt-4 rounded-xl bg-[#f8f4fc] px-4 py-3 text-xs leading-5 text-[#625b68]">This product has an older size option that isn’t in the standard size list. Select the actual sizes and stock below; saving replaces the old option.</p>}
-            <div className="mt-5 grid grid-cols-4 gap-2 sm:grid-cols-8">
-              {AVAILABLE_SIZES.map((size) => {
-                const selected = variants.some((variant) => variant.size === size);
-                return <button key={size} type="button" aria-pressed={selected} onClick={() => toggleSize(size)} className={`rounded-xl border px-3 py-3 text-sm font-semibold transition focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-purple-100 ${selected ? "border-[#55239a] bg-[#f4eff9] text-[#55239a]" : "border-[#e6e0eb] bg-white text-[#625b68] hover:border-[#8b5bc7]"}`}>{size}</button>;
-              })}
-            </div>
-            {variants.length === 0 ? <p className="mt-4 rounded-xl border border-dashed border-[#d9cce7] px-4 py-5 text-center text-sm text-[#817888]">Choose at least one size above to add stock.</p> : <div className="mt-5 space-y-3">
-              {AVAILABLE_SIZES.filter((size) => variants.some((variant) => variant.size === size)).map((size) => {
-                const sizeVariants = variants.filter((variant) => variant.size === size);
-                return <div key={size} className="rounded-xl border border-[#eee9f1] p-4">
-                  <div className="mb-3 flex items-center justify-between gap-3"><p className="text-sm font-semibold text-[#29232f]">Size {size}</p><button type="button" onClick={() => addColorOption(size)} className="inline-flex items-center gap-1 text-xs font-semibold text-[#55239a] hover:underline"><Plus size={14} /> Add colour</button></div>
-                  <div className="space-y-3">{sizeVariants.map((variant) => <div key={variant.localId} className="grid grid-cols-[minmax(0,1fr)_100px_36px] items-end gap-2 sm:grid-cols-[minmax(0,1fr)_140px_36px]">
-                    <label className={`${labelClass} text-xs`}>Colour<input className={fieldClass} value={variant.color} onChange={(event) => updateVariant(variant.localId, "color", event.target.value)} placeholder="Default, Black, etc." /></label>
-                    <label className={`${labelClass} text-xs`}>Stock<input className={fieldClass} type="text" inputMode="numeric" pattern="[0-9]*" value={variant.stock} onChange={(event) => updateVariant(variant.localId, "stock", event.target.value)} placeholder="0" /></label>
-                    <button type="button" aria-label={`Remove ${size} ${variant.color || "colour"} option`} onClick={() => setVariants((current) => current.filter((item) => item.localId !== variant.localId))} className="mb-1 rounded-lg p-2 text-[#817888] hover:bg-red-50 hover:text-[#b42318]"><Trash2 size={16} /></button>
-                  </div>)}</div>
-                </div>;
-              })}
-            </div>}
+            <div><h2 className="text-2xl">{isBagProduct ? "Stock quantity" : isShoeProduct ? "Shoe sizes and stock" : "Sizes and stock"}</h2><p className="mt-1 text-sm text-[#817888]">{isBagProduct ? "Bags don’t need size options. Enter how many are available." : isShoeProduct ? "Select the UK shoe sizes you carry and enter the stock for each one." : "Select the sizes you carry. Shoppers can choose from these sizes on the product page."}</p>{!isBagProduct && <p className="mt-1 text-xs text-[#817888]">Enter the same colour name for each size in that colour; customers will see it as one selectable swatch.</p>}</div>
+            {isBagProduct ? <label className={`${labelClass} mt-5 block max-w-xs`}>Quantity in stock<input className={fieldClass} type="text" inputMode="numeric" pattern="[0-9]*" value={bagStock} onChange={(event) => setBagStock(event.target.value)} placeholder="e.g. 5" /></label> : <>
+              {hasLegacySizes && <p className="mt-4 rounded-xl bg-[#f8f4fc] px-4 py-3 text-xs leading-5 text-[#625b68]">This product has an older size option that isn’t in the standard size list. Select the actual sizes and stock below; saving replaces the old option.</p>}
+              <div className="mt-5 grid grid-cols-4 gap-2 sm:grid-cols-8">
+                {availableSizes.map((size) => {
+                  const selected = variants.some((variant) => variant.size === size);
+                  return <button key={size} type="button" aria-pressed={selected} onClick={() => toggleSize(size)} className={`rounded-xl border px-3 py-3 text-sm font-semibold transition focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-purple-100 ${selected ? "border-[#55239a] bg-[#f4eff9] text-[#55239a]" : "border-[#e6e0eb] bg-white text-[#625b68] hover:border-[#8b5bc7]"}`}>{size}</button>;
+                })}
+              </div>
+              {variants.length === 0 ? <p className="mt-4 rounded-xl border border-dashed border-[#d9cce7] px-4 py-5 text-center text-sm text-[#817888]">Choose at least one size above to add stock.</p> : <div className="mt-5 space-y-3">
+                {availableSizes.filter((size) => variants.some((variant) => variant.size === size)).map((size) => {
+                  const sizeVariants = variants.filter((variant) => variant.size === size);
+                  return <div key={size} className="rounded-xl border border-[#eee9f1] p-4">
+                    <div className="mb-3 flex items-center justify-between gap-3"><p className="text-sm font-semibold text-[#29232f]">Size {size}</p><button type="button" onClick={() => addColorOption(size)} className="inline-flex items-center gap-1 text-xs font-semibold text-[#55239a] hover:underline"><Plus size={14} /> Add colour</button></div>
+                    <div className="space-y-3">{sizeVariants.map((variant) => <div key={variant.localId} className="grid grid-cols-[minmax(0,1fr)_100px_36px] items-end gap-2 sm:grid-cols-[minmax(0,1fr)_140px_36px]">
+                      <label className={`${labelClass} text-xs`}>Colour<div className="mt-2 flex items-center gap-2"><span className="h-5 w-5 shrink-0 rounded-full border border-black/10" style={{ backgroundColor: toCatalogColorOption(variant.color).hex }} /><input className={`${fieldClass} mt-0`} value={variant.color} onChange={(event) => updateVariant(variant.localId, "color", event.target.value)} placeholder="Black, Lilac, or #55239A" /></div></label>
+                      <label className={`${labelClass} text-xs`}>Stock<input className={fieldClass} type="text" inputMode="numeric" pattern="[0-9]*" value={variant.stock} onChange={(event) => updateVariant(variant.localId, "stock", event.target.value)} placeholder="0" /></label>
+                      <button type="button" aria-label={`Remove ${size} ${variant.color || "colour"} option`} onClick={() => setVariants((current) => current.filter((item) => item.localId !== variant.localId))} className="mb-1 rounded-lg p-2 text-[#817888] hover:bg-red-50 hover:text-[#b42318]"><Trash2 size={16} /></button>
+                    </div>)}</div>
+                  </div>;
+                })}
+              </div>}
+            </>}
           </div>
 
           <div className="rounded-2xl border border-[#ece6f0] bg-white p-5 sm:p-7"><h2 className="text-2xl">Tags</h2><p className="mt-1 text-sm text-[#817888]">Tags help shoppers find the right collection and seasonal edits.</p><div className="mt-4 flex flex-wrap gap-2">{tags.map((tag) => { const selected = selectedTagIds.includes(tag.id); return <button key={tag.id} type="button" aria-pressed={selected} onClick={() => setSelectedTagIds((current) => selected ? current.filter((id) => id !== tag.id) : [...current, tag.id])} className={`rounded-full border px-3.5 py-2 text-sm transition ${selected ? "border-[#55239a] bg-[#f4eff9] font-semibold text-[#55239a]" : "border-[#e6e0eb] text-[#625b68] hover:border-[#8b5bc7]"}`}>{tag.name}</button>; })}{tags.length === 0 && <p className="text-sm text-[#817888]">Create your first tags in <Link href="/admin/settings" className="font-semibold text-[#55239a] underline">Shop settings</Link>.</p>}</div></div>

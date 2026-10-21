@@ -12,6 +12,8 @@ const links = [
   { label: "Dresses", href: "/shop?category=dresses" },
   { label: "Shirts & tops", href: "/shop?category=shirts" },
   { label: "Underwear", href: "/shop?department=underwear" },
+  { label: "Bags", href: "/shop?department=bags" },
+  { label: "Shoes", href: "/shop?department=shoes" },
 ];
 
 export default function StorefrontHeader() {

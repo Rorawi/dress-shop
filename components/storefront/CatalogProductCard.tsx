@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { ArrowUpRight } from "lucide-react";
 import type { CatalogProduct } from "@/lib/catalog-types";
+import { getCatalogColorOptions } from "@/lib/catalog-colors";
 import DiscreetImage from "@/components/storefront/DiscreetImage";
 
 const money = (amount: number, currency: string) => new Intl.NumberFormat("en-GH", { style: "currency", currency, maximumFractionDigits: 0 }).format(amount);
@@ -8,7 +9,8 @@ const money = (amount: number, currency: string) => new Intl.NumberFormat("en-GH
 export default function CatalogProductCard({ product, currency = "GHS" }: { product: CatalogProduct; currency?: string }) {
   const image = product.images[0];
   const available = product.variants.some((variant) => variant.stock > 0);
-  const sizes = [...new Set(product.variants.filter((variant) => variant.stock > 0).map((variant) => variant.size))];
+  const sizes = [...new Set(product.variants.filter((variant) => variant.stock > 0 && variant.size.trim().toLowerCase() !== "one size").map((variant) => variant.size))];
+  const firstColor = getCatalogColorOptions(product.variants.map((variant) => variant.color))[0];
   const discount = product.compareAtPrice && product.compareAtPrice > product.price
     ? Math.round((1 - product.price / product.compareAtPrice) * 100)
     : null;
@@ -27,7 +29,7 @@ export default function CatalogProductCard({ product, currency = "GHS" }: { prod
     <div className="px-0.5 pt-3.5">
       <div className="mb-1 flex items-start justify-between gap-2">
         <p className="min-h-5 text-[10px] font-semibold uppercase tracking-[.13em] text-[#8B5BC7]">{product.brand?.name ?? product.category.name}</p>
-        {product.variants[0]?.color && <span className="mt-0.5 h-2.5 w-2.5 shrink-0 rounded-full border border-black/10" title={product.variants[0].color} style={{ backgroundColor: colorSwatch(product.variants[0].color) }} />}
+        {firstColor && <span className="mt-0.5 h-2.5 w-2.5 shrink-0 rounded-full border border-black/10" title={firstColor.name} style={{ backgroundColor: firstColor.hex }} />}
       </div>
       <Link href={`/shop/${product.slug}`} className="line-clamp-2 text-sm font-medium leading-snug text-[#17141C] transition group-hover:text-[#55239A]">{product.name}</Link>
       <div className="mt-2 flex items-center gap-2">
@@ -39,16 +41,4 @@ export default function CatalogProductCard({ product, currency = "GHS" }: { prod
       </div>
     </div>
   </article>;
-}
-
-function colorSwatch(color: string) {
-  const value = color.toLowerCase();
-  if (value.includes("black")) return "#17141C";
-  if (value.includes("white")) return "#fff";
-  if (value.includes("violet") || value.includes("lilac")) return "#8B5BC7";
-  if (value.includes("blush") || value.includes("pink")) return "#e9adb7";
-  if (value.includes("navy")) return "#26345e";
-  if (value.includes("olive")) return "#697252";
-  if (value.includes("natural")) return "#d3c4a2";
-  return "#d8d3dc";
 }

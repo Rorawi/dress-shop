@@ -4,7 +4,7 @@ export default function manifest(): MetadataRoute.Manifest {
   return {
     name: "Charwin Stores",
     short_name: "Charwin Stores",
-    description: "Clothing and intimates, selected with care.",
+    description: "Clothing, intimates, bags, and shoes, selected with care.",
     start_url: "/",
     display: "standalone",
     background_color: "#FCFBFD",

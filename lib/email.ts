@@ -21,7 +21,7 @@ export async function sendOrderConfirmation({
     .map(
       (item) =>
         `<tr>
-          <td style="padding:8px;border-bottom:1px solid #eee">${item.name} (${item.size})</td>
+          <td style="padding:8px;border-bottom:1px solid #eee">${item.name}${item.size.toLowerCase() === "one size" ? "" : ` (${item.size})`}</td>
           <td style="padding:8px;border-bottom:1px solid #eee;text-align:center">${item.quantity}</td>
           <td style="padding:8px;border-bottom:1px solid #eee;text-align:right">£${(item.price * item.quantity).toFixed(2)}</td>
         </tr>`

@@ -1,4 +1,6 @@
-export type AdminCategoryOption = { id: string; name: string; department: "clothing" | "underwear"; sort_order: number; is_active: boolean };
+import type { CatalogDepartment } from "@/lib/catalog-types";
+
+export type AdminCategoryOption = { id: string; name: string; department: CatalogDepartment; sort_order: number; is_active: boolean };
 export type AdminSubcategoryOption = { id: string; category_id: string; name: string; slug: string; sort_order: number; is_active: boolean; categoryName: string };
 export type AdminBrandOption = { id: string; name: string };
 export type AdminTagOption = { id: string; name: string; kind: "general" | "seasonal" | "collection" };

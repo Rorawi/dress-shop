@@ -3,7 +3,9 @@
 insert into charwin_store.categories (name, slug, department, sort_order)
 values
   ('Clothing', 'clothing', 'clothing', 0),
-  ('Underwear', 'underwear', 'underwear', 1)
+  ('Underwear', 'underwear', 'underwear', 1),
+  ('Bags', 'bags', 'bags', 2),
+  ('Shoes', 'shoes', 'shoes', 3)
 on conflict (slug) do update set
   name = excluded.name,
   department = excluded.department,

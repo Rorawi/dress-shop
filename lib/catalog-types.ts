@@ -1,4 +1,11 @@
-export type CatalogDepartment = "clothing" | "underwear";
+export const CATALOG_DEPARTMENTS = [
+  { value: "clothing", label: "Clothing" },
+  { value: "underwear", label: "Underwear" },
+  { value: "bags", label: "Bags" },
+  { value: "shoes", label: "Shoes" },
+] as const;
+
+export type CatalogDepartment = (typeof CATALOG_DEPARTMENTS)[number]["value"];
 
 export interface CatalogCategory {
   id: string;

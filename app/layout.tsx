@@ -21,11 +21,11 @@ export const metadata: Metadata = {
     template: "%s | Charwin Stores",
   },
   description:
-    "Discover clothing and intimates selected for everyday confidence. Browse Charwin Stores and order directly on WhatsApp.",
+    "Discover clothing, intimates, bags, and shoes selected for everyday confidence. Browse Charwin Stores and order directly on WhatsApp.",
   applicationName: "Charwin Stores",
   openGraph: {
     title: "Charwin Stores | Style, made yours",
-    description: "Clothing and intimates, selected with care.",
+    description: "Clothing, intimates, bags, and shoes, selected with care.",
     siteName: "Charwin Stores",
     type: "website",
     images: [
@@ -40,7 +40,7 @@ export const metadata: Metadata = {
   twitter: {
     card: "summary_large_image",
     title: "Charwin Stores | Style, made yours",
-    description: "Clothing and intimates, selected with care.",
+    description: "Clothing, intimates, bags, and shoes, selected with care.",
     images: ["/brand/charwin-stores-logo.jpg"],
   },
 };

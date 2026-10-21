@@ -6,6 +6,7 @@ import Link from "next/link";
 import { ChevronDown, ChevronUp, LoaderCircle, Plus, Trash2 } from "lucide-react";
 import { createSupabaseBrowserClient } from "@/lib/supabase/browser";
 import { buildWhatsAppUrl, isValidWhatsAppNumber, normalizeWhatsAppNumber } from "@/lib/whatsapp";
+import { CATALOG_DEPARTMENTS, type CatalogDepartment } from "@/lib/catalog-types";
 import type { AdminCategoryOption, AdminSubcategoryOption, AdminTagOption } from "@/components/admin/types";
 
 type Props = {
@@ -32,12 +33,14 @@ export default function ShopSettingsEditor({ initialSettings, categories: initia
   const [categoryName, setCategoryName] = useState("");
   const [subcategoryName, setSubcategoryName] = useState("");
   const [subcategoryCategoryId, setSubcategoryCategoryId] = useState(initialCategories[0]?.id ?? "");
-  const [department, setDepartment] = useState<"clothing" | "underwear">("clothing");
+  const [department, setDepartment] = useState<CatalogDepartment>("clothing");
   const [tagName, setTagName] = useState("");
   const [tagKind, setTagKind] = useState<AdminTagOption["kind"]>("general");
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
+  const [categoryMessage, setCategoryMessage] = useState("");
+  const [categoryError, setCategoryError] = useState("");
   const testWhatsAppUrl = buildWhatsAppUrl(whatsapp, `Hello ${shopName.trim() || "Charwin Stores"}, I’m testing the WhatsApp chat link.`);
 
   async function saveSettings(event: React.FormEvent<HTMLFormElement>) {
@@ -66,13 +69,27 @@ export default function ShopSettingsEditor({ initialSettings, categories: initia
   async function addCategory(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!categoryName.trim()) return;
-    setBusy(true); setError(""); setMessage("");
-    const { data, error: createError } = await supabase.from("categories").insert({ name: categoryName.trim(), slug: slugify(categoryName), department, sort_order: categories.length, is_active: true }).select("id,name,department,sort_order,is_active").single();
+    setCategoryError(""); setCategoryMessage("");
+    const categorySlug = slugify(categoryName);
+    if (!categorySlug) {
+      setCategoryError("Enter a category name using letters or numbers.");
+      return;
+    }
+    if (categories.some((category) => slugify(category.name) === categorySlug)) {
+      setCategoryError(`“${categoryName.trim()}” already exists. Use the existing category or enter a more specific category name.`);
+      return;
+    }
+    setBusy(true);
+    const { data, error: createError } = await supabase.from("categories").insert({ name: categoryName.trim(), slug: categorySlug, department, sort_order: categories.length, is_active: true }).select("id,name,department,sort_order,is_active").single();
     setBusy(false);
-    if (createError) return setError(createError.message);
+    if (createError) {
+      if (createError.code === "23505") return setCategoryError("That category already exists. Use the existing category or choose a more specific name.");
+      if (createError.code === "23514") return setCategoryError("Supabase has not enabled this department yet. Apply the Bags and Shoes migration, then refresh this page.");
+      return setCategoryError(createError.message);
+    }
     setCategories((current) => [...current, data]);
     setCategoryName("");
-    setMessage("Category added.");
+    setCategoryMessage("Category added.");
     router.refresh();
   }
 
@@ -180,13 +197,15 @@ export default function ShopSettingsEditor({ initialSettings, categories: initia
       </section>
 
       <section className="rounded-2xl border border-[#ece6f0] bg-white p-5 sm:p-7">
-        <div><h2 className="text-2xl">Categories</h2><p className="mt-1 text-sm text-[#817888]">Build your shop navigation: boxers, singlets, plain T-shirts, thrift finds and two-piece sets.</p></div>
+        <div><h2 className="text-2xl">Categories</h2><p className="mt-1 text-sm text-[#817888]">Add product categories under each department. For example, add Handbags under Bags or Sneakers under Shoes. Bags and Shoes are already available as departments.</p></div>
+        {categoryError && <p role="alert" className="mt-4 rounded-xl bg-red-50 px-4 py-3 text-sm text-red-800">{categoryError}</p>}
+        {categoryMessage && <p role="status" className="mt-4 rounded-xl bg-emerald-50 px-4 py-3 text-sm text-emerald-800">{categoryMessage}</p>}
         <form onSubmit={addCategory} className="mt-5 grid gap-3 sm:grid-cols-[1fr_180px_auto]">
-          <label className="sr-only" htmlFor="new-category">Category name</label><input id="new-category" className="rounded-xl border border-[#e6e0eb] px-4 py-3 text-sm outline-none focus:border-[#8b5bc7]" value={categoryName} onChange={(event) => setCategoryName(event.target.value)} placeholder="New category name" />
-          <label className="sr-only" htmlFor="category-department">Department</label><select id="category-department" className="rounded-xl border border-[#e6e0eb] bg-white px-4 py-3 text-sm" value={department} onChange={(event) => setDepartment(event.target.value as typeof department)}><option value="clothing">Clothing</option><option value="underwear">Underwear</option></select>
+          <label className="sr-only" htmlFor="new-category">Category name</label><input id="new-category" className="rounded-xl border border-[#e6e0eb] px-4 py-3 text-sm outline-none focus:border-[#8b5bc7]" value={categoryName} onChange={(event) => setCategoryName(event.target.value)} placeholder="e.g. Handbags, Backpacks, Sneakers" />
+          <label className="sr-only" htmlFor="category-department">Department</label><select id="category-department" className="rounded-xl border border-[#e6e0eb] bg-white px-4 py-3 text-sm" value={department} onChange={(event) => setDepartment(event.target.value as CatalogDepartment)}>{CATALOG_DEPARTMENTS.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}</select>
           <button disabled={busy || !categoryName.trim()} className="inline-flex items-center justify-center gap-2 rounded-full border border-[#d9cce7] px-5 py-3 text-sm font-semibold text-[#55239a] hover:bg-[#f8f4fc] disabled:opacity-40"><Plus size={16} /> Add category</button>
         </form>
-        <div className="mt-5 divide-y divide-[#f0ecf2]">{categories.map((category) => <div key={category.id} className="flex items-center justify-between gap-4 py-3"><div><p className="text-sm font-semibold">{category.name}</p><p className="mt-1 text-xs text-[#817888]">{category.department === "underwear" ? "Underwear" : "Clothing"}</p></div><button disabled={busy} onClick={() => toggleCategory(category)} className={`cursor-pointer rounded-full px-3 py-1.5 text-xs font-semibold disabled:cursor-not-allowed ${category.is_active ? "bg-emerald-50 text-emerald-800" : "bg-slate-100 text-slate-700"}`}>{category.is_active ? "Active" : "Inactive"}</button></div>)}{categories.length === 0 && <p className="py-5 text-sm text-[#817888]">No categories yet. Create one above.</p>}</div>
+        <div className="mt-5 divide-y divide-[#f0ecf2]">{categories.map((category) => <div key={category.id} className="flex items-center justify-between gap-4 py-3"><div><p className="text-sm font-semibold">{category.name}</p><p className="mt-1 text-xs text-[#817888]">{CATALOG_DEPARTMENTS.find((item) => item.value === category.department)?.label ?? category.department}</p></div><button disabled={busy} onClick={() => toggleCategory(category)} className={`cursor-pointer rounded-full px-3 py-1.5 text-xs font-semibold disabled:cursor-not-allowed ${category.is_active ? "bg-emerald-50 text-emerald-800" : "bg-slate-100 text-slate-700"}`}>{category.is_active ? "Active" : "Inactive"}</button></div>)}{categories.length === 0 && <p className="py-5 text-sm text-[#817888]">No categories yet. Create one above.</p>}</div>
       </section>
 
       <section id="shop-sections" className="rounded-2xl border border-[#ece6f0] bg-white p-5 sm:p-7">

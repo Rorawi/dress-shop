@@ -3,7 +3,8 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { Search, SlidersHorizontal, X } from "lucide-react";
-import type { CatalogProduct } from "@/lib/catalog-types";
+import { CATALOG_DEPARTMENTS, type CatalogProduct } from "@/lib/catalog-types";
+import { colorKey, getCatalogColorOptions } from "@/lib/catalog-colors";
 import CatalogProductGrid from "@/components/storefront/CatalogProductGrid";
 
 type Filters = Record<string, string | undefined>;
@@ -40,7 +41,11 @@ export default function ProductListing({ products, initialFilters = {}, currency
   const [showFilters, setShowFilters] = useState(false);
   useEffect(() => setFilters(initialFilters), [initialFilters]);
   const brands = unique(products.map((product) => product.brand?.name ?? ""));
-  const categories = unique(products.map((product) => product.subcategory?.slug ?? "")).sort((a, b) => {
+  const departmentSlugs = new Set<string>(CATALOG_DEPARTMENTS.map((department) => department.value));
+  const categories = unique([
+    ...products.map((product) => product.category.slug).filter((slug) => !departmentSlugs.has(slug)),
+    ...products.map((product) => product.subcategory?.slug ?? ""),
+  ]).sort((a, b) => {
     const aPriority = preferredCategoryOrder.indexOf(a);
     const bPriority = preferredCategoryOrder.indexOf(b);
     if (aPriority === -1 && bPriority === -1) return a.localeCompare(b);
@@ -48,8 +53,8 @@ export default function ProductListing({ products, initialFilters = {}, currency
     if (bPriority === -1) return -1;
     return aPriority - bPriority;
   });
-  const colors = unique(products.flatMap((product) => product.variants.map((variant) => variant.color)));
-  const sizes = unique(products.flatMap((product) => product.variants.map((variant) => variant.size)));
+  const colors = getCatalogColorOptions(products.flatMap((product) => product.variants.map((variant) => variant.color)));
+  const sizes = unique(products.flatMap((product) => product.variants.map((variant) => variant.size)).filter((size) => size.trim().toLowerCase() !== "one size"));
   const sleeves = unique(products.map((product) => product.sleeveLength ?? ""));
   const tags = unique(products.flatMap((product) => product.tags.map((tag) => tag.name)));
   const maxPrice = Math.max(0, ...products.map((product) => product.price));
@@ -71,10 +76,10 @@ export default function ProductListing({ products, initialFilters = {}, currency
     const result = products.filter((product) => {
       if (filters.q && !fuzzyMatch(filters.q, product)) return false;
       if (filters.department && filters.department !== product.category.department) return false;
-      if (filters.category && filters.category !== product.subcategory?.slug) return false;
+      if (filters.category && filters.category !== product.subcategory?.slug && filters.category !== product.category.slug) return false;
       if (filters.gender && filters.gender !== product.gender) return false;
       if (filters.brand && filters.brand !== product.brand?.name) return false;
-      if (filters.color && !product.variants.some((variant) => variant.color === filters.color)) return false;
+      if (filters.color && !product.variants.some((variant) => colorKey(variant.color) === colorKey(filters.color!))) return false;
       if (filters.size && !product.variants.some((variant) => variant.size === filters.size && variant.stock > 0)) return false;
       if (filters.sleeveLength && filters.sleeveLength !== product.sleeveLength) return false;
       if (filters.tag && !product.tags.some((tag) => tag.name === filters.tag)) return false;
@@ -90,18 +95,22 @@ export default function ProductListing({ products, initialFilters = {}, currency
     });
   }, [filters, products]);
 
-  const heading = filters.tag === "Thrift Finds" ? "Thrift Finds" : filters.department === "underwear" ? "Underwear & intimates" : filters.department === "clothing" ? "Clothing" : filters.category ? titleCase(filters.category) : "The collection";
+  const selectedDepartment = CATALOG_DEPARTMENTS.find((department) => department.value === filters.department);
+  const heading = filters.tag === "Thrift Finds" ? "Thrift Finds" : filters.department === "underwear" ? "Underwear & intimates" : selectedDepartment?.label ?? (filters.category ? titleCase(filters.category) : "The collection");
   const emptyMessage = filters.tag === "Thrift Finds"
     ? "No thrift pieces are listed just yet. Check back soon."
     : "No products found. Try another search or clear some filters.";
 
   const filterControls = <div className="space-y-5">
-    <label className="block text-xs font-semibold uppercase tracking-wider text-[#625B68]">Department<select value={filters.department ?? ""} onChange={(event) => update("department", event.target.value)} className="mt-2 w-full rounded-xl border border-[#E6E0EB] bg-white px-3 py-3 text-sm font-normal normal-case tracking-normal text-[#17141C] outline-none focus:border-[#8B5BC7]"><option value="">All departments</option><option value="clothing">Clothing</option><option value="underwear">Underwear</option></select></label>
+    <label className="block text-xs font-semibold uppercase tracking-wider text-[#625B68]">Department<select value={filters.department ?? ""} onChange={(event) => update("department", event.target.value)} className="mt-2 w-full rounded-xl border border-[#E6E0EB] bg-white px-3 py-3 text-sm font-normal normal-case tracking-normal text-[#17141C] outline-none focus:border-[#8B5BC7]"><option value="">All departments</option>{CATALOG_DEPARTMENTS.map((department) => <option key={department.value} value={department.value}>{department.label}</option>)}</select></label>
     <label className="block text-xs font-semibold uppercase tracking-wider text-[#625B68]">Category<select value={filters.category ?? ""} onChange={(event) => update("category", event.target.value)} className="mt-2 w-full rounded-xl border border-[#E6E0EB] bg-white px-3 py-3 text-sm font-normal normal-case tracking-normal text-[#17141C] outline-none focus:border-[#8B5BC7]"><option value="">All categories</option>{categories.map((item) => <option key={item} value={item}>{titleCase(item)}</option>)}</select></label>
     <label className="block text-xs font-semibold uppercase tracking-wider text-[#625B68]">Gender<select value={filters.gender ?? ""} onChange={(event) => update("gender", event.target.value)} className="mt-2 w-full rounded-xl border border-[#E6E0EB] bg-white px-3 py-3 text-sm font-normal normal-case tracking-normal text-[#17141C] outline-none focus:border-[#8B5BC7]"><option value="">Any</option><option value="women">Women</option><option value="men">Men</option><option value="unisex">Unisex</option><option value="kids">Kids</option></select></label>
     <label className="block text-xs font-semibold uppercase tracking-wider text-[#625B68]">Brand<select value={filters.brand ?? ""} onChange={(event) => update("brand", event.target.value)} className="mt-2 w-full rounded-xl border border-[#E6E0EB] bg-white px-3 py-3 text-sm font-normal normal-case tracking-normal text-[#17141C] outline-none focus:border-[#8B5BC7]"><option value="">All brands</option>{brands.map((brand) => <option key={brand}>{brand}</option>)}</select></label>
-    <label className="block text-xs font-semibold uppercase tracking-wider text-[#625B68]">Colour<select value={filters.color ?? ""} onChange={(event) => update("color", event.target.value)} className="mt-2 w-full rounded-xl border border-[#E6E0EB] bg-white px-3 py-3 text-sm font-normal normal-case tracking-normal text-[#17141C] outline-none focus:border-[#8B5BC7]"><option value="">All colours</option>{colors.map((color) => <option key={color}>{color}</option>)}</select></label>
-    <label className="block text-xs font-semibold uppercase tracking-wider text-[#625B68]">Size<select value={filters.size ?? ""} onChange={(event) => update("size", event.target.value)} className="mt-2 w-full rounded-xl border border-[#E6E0EB] bg-white px-3 py-3 text-sm font-normal normal-case tracking-normal text-[#17141C] outline-none focus:border-[#8B5BC7]"><option value="">All sizes</option>{sizes.map((size) => <option key={size}>{size}</option>)}</select></label>
+    {colors.length > 0 && <div><p className="text-xs font-semibold uppercase tracking-wider text-[#625B68]">Colour</p><div className="mt-2 flex flex-wrap gap-2">{colors.map((color) => {
+      const selected = colorKey(filters.color ?? "") === color.key;
+      return <button key={color.key} type="button" onClick={() => update("color", selected ? "" : color.name)} aria-pressed={selected} className={`inline-flex items-center gap-2 rounded-full border px-3 py-2 text-xs font-medium normal-case tracking-normal transition ${selected ? "border-[#55239A] bg-[#F5F1F8] text-[#35115F]" : "border-[#E6E0EB] bg-white text-[#625B68] hover:border-[#8B5BC7]"}`}><span className="h-3.5 w-3.5 rounded-full border border-black/10" style={{ backgroundColor: color.hex }} />{color.name}</button>;
+    })}</div></div>}
+    {sizes.length > 0 && <label className="block text-xs font-semibold uppercase tracking-wider text-[#625B68]">Size<select value={filters.size ?? ""} onChange={(event) => update("size", event.target.value)} className="mt-2 w-full rounded-xl border border-[#E6E0EB] bg-white px-3 py-3 text-sm font-normal normal-case tracking-normal text-[#17141C] outline-none focus:border-[#8B5BC7]"><option value="">All sizes</option>{sizes.map((size) => <option key={size}>{size}</option>)}</select></label>}
     <label className="block text-xs font-semibold uppercase tracking-wider text-[#625B68]">Sleeve length<select value={filters.sleeveLength ?? ""} onChange={(event) => update("sleeveLength", event.target.value)} className="mt-2 w-full rounded-xl border border-[#E6E0EB] bg-white px-3 py-3 text-sm font-normal normal-case tracking-normal text-[#17141C] outline-none focus:border-[#8B5BC7]"><option value="">Any</option>{sleeves.map((sleeve) => <option key={sleeve} value={sleeve}>{titleCase(sleeve)}</option>)}</select></label>
     <label className="block text-xs font-semibold uppercase tracking-wider text-[#625B68]">Collection<select value={filters.tag ?? ""} onChange={(event) => update("tag", event.target.value)} className="mt-2 w-full rounded-xl border border-[#E6E0EB] bg-white px-3 py-3 text-sm font-normal normal-case tracking-normal text-[#17141C] outline-none focus:border-[#8B5BC7]"><option value="">Any collection</option>{tags.map((tag) => <option key={tag}>{tag}</option>)}</select></label>
     <div><p className="text-xs font-semibold uppercase tracking-wider text-[#625B68]">Price range</p><div className="mt-2 grid grid-cols-2 gap-2"><label className="sr-only" htmlFor="min-price">Minimum price</label><input id="min-price" type="number" min="0" placeholder="Min" value={filters.minPrice ?? ""} onChange={(event) => update("minPrice", event.target.value)} className="min-w-0 rounded-xl border border-[#E6E0EB] px-3 py-3 text-sm outline-none focus:border-[#8B5BC7]" /><label className="sr-only" htmlFor="max-price">Maximum price</label><input id="max-price" type="number" min="0" max={maxPrice} placeholder="Max" value={filters.maxPrice ?? ""} onChange={(event) => update("maxPrice", event.target.value)} className="min-w-0 rounded-xl border border-[#E6E0EB] px-3 py-3 text-sm outline-none focus:border-[#8B5BC7]" /></div></div>
