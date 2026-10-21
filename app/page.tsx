@@ -56,7 +56,7 @@ export default async function HomePage() {
         </div>
       </div>
       <div className="pointer-events-none absolute inset-y-0 right-0 -z-10 w-[45%] sm:w-[50%]">
-        <Image src="/brand/charwin-hero-shopping-bag.png" alt="Charwin Stores shopping bags" fill priority sizes="(max-width: 640px) 45vw, 50vw" className="object-contain object-right opacity-35 sm:opacity-100" />
+        <Image src="/brand/charwin-shopping-bag-cutout.png" alt="Charwin Stores shopping bags" fill priority sizes="(max-width: 640px) 45vw, 50vw" className="object-contain object-right opacity-35 sm:opacity-100" />
       </div>
       <div className="absolute bottom-7 right-6 hidden text-[10px] uppercase tracking-[.25em] text-[#625B68] [writing-mode:vertical-rl] sm:block">Charwin Stores · Ghana</div>
     </section>
