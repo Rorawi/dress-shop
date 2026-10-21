@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { Search, SlidersHorizontal, X } from "lucide-react";
+import { ChevronLeft, ChevronRight, Search, SlidersHorizontal, X } from "lucide-react";
 import { CATALOG_DEPARTMENTS, type CatalogProduct } from "@/lib/catalog-types";
 import { colorKey, getCatalogColorOptions } from "@/lib/catalog-colors";
 import CatalogProductGrid from "@/components/storefront/CatalogProductGrid";
@@ -12,6 +12,18 @@ type Filters = Record<string, string | undefined>;
 const titleCase = (value: string) => value.replaceAll("-", " ").replace(/\b\w/g, (letter) => letter.toUpperCase());
 const normalize = (value: string) => value.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim();
 const preferredCategoryOrder = ["boxers", "singlets", "t-shirts", "shirts", "matching-sets", "jumpsuits"];
+const PAGE_SIZE = 12;
+
+function withoutPage(filters: Filters): Filters {
+  const next = { ...filters };
+  delete next.page;
+  return next;
+}
+
+function pageFromFilter(value?: string) {
+  const page = Number(value);
+  return Number.isInteger(page) && page > 0 ? page : 1;
+}
 
 function editDistance(a: string, b: string) {
   const row = Array.from({ length: b.length + 1 }, (_, index) => index);
@@ -37,9 +49,13 @@ function fuzzyMatch(query: string, product: CatalogProduct) {
 }
 
 export default function ProductListing({ products, initialFilters = {}, currency = "GHS" }: { products: CatalogProduct[]; initialFilters?: Filters; currency?: string }) {
-  const [filters, setFilters] = useState<Filters>(initialFilters);
+  const [filters, setFilters] = useState<Filters>(() => withoutPage(initialFilters));
+  const [page, setPage] = useState(() => pageFromFilter(initialFilters.page));
   const [showFilters, setShowFilters] = useState(false);
-  useEffect(() => setFilters(initialFilters), [initialFilters]);
+  useEffect(() => {
+    setFilters(withoutPage(initialFilters));
+    setPage(pageFromFilter(initialFilters.page));
+  }, [initialFilters]);
   const brands = unique(products.map((product) => product.brand?.name ?? ""));
   const departmentSlugs = new Set<string>(CATALOG_DEPARTMENTS.map((department) => department.value));
   const categories = unique([
@@ -62,13 +78,24 @@ export default function ProductListing({ products, initialFilters = {}, currency
   const update = (key: string, value: string) => {
     const next = { ...filters, [key]: value || undefined };
     setFilters(next);
+    setPage(1);
     const params = new URLSearchParams();
     Object.entries(next).forEach(([name, entry]) => { if (entry) params.set(name, entry); });
     window.history.replaceState(null, "", params.size ? `/shop?${params.toString()}` : "/shop");
   };
 
+  const goToPage = (nextPage: number) => {
+    const safePage = Math.max(1, Math.min(nextPage, pageCount));
+    setPage(safePage);
+    const params = new URLSearchParams();
+    Object.entries(filters).forEach(([name, entry]) => { if (entry) params.set(name, entry); });
+    if (safePage > 1) params.set("page", String(safePage));
+    window.history.replaceState(null, "", params.size ? `/shop?${params.toString()}` : "/shop");
+  };
+
   const reset = () => {
     setFilters({});
+    setPage(1);
     window.history.replaceState(null, "", "/shop");
   };
 
@@ -94,6 +121,14 @@ export default function ProductListing({ products, initialFilters = {}, currency
       return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
     });
   }, [filters, products]);
+
+  const pageCount = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+  const currentPage = Math.min(page, pageCount);
+  const pageProducts = filtered.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
+  const firstItem = filtered.length ? (currentPage - 1) * PAGE_SIZE + 1 : 0;
+  const lastItem = Math.min(currentPage * PAGE_SIZE, filtered.length);
+  const pageWindowStart = Math.max(1, Math.min(currentPage - 2, pageCount - 4));
+  const pageNumbers = Array.from({ length: Math.min(5, pageCount) }, (_, index) => pageWindowStart + index);
 
   const selectedDepartment = CATALOG_DEPARTMENTS.find((department) => department.value === filters.department);
   const heading = filters.tag === "Thrift Finds" ? "Thrift Finds" : filters.department === "underwear" ? "Underwear & intimates" : selectedDepartment?.label ?? (filters.category ? titleCase(filters.category) : "The collection");
@@ -134,9 +169,14 @@ export default function ProductListing({ products, initialFilters = {}, currency
       </div>
       <div className="grid gap-8 lg:grid-cols-[220px_1fr] xl:grid-cols-[240px_1fr]">
         <aside className={`${showFilters ? "block" : "hidden"} lg:block`}><div className="sticky top-28 rounded-2xl border border-[#EEEAF0] bg-white p-5"><div className="mb-5 flex items-center justify-between"><h2 className="font-[family-name:var(--font-playfair)] text-xl">Refine</h2><span className="text-[10px] text-[#8B8490]">{currency}</span></div>{filterControls}</div></aside>
-        <div><div className="mb-6 hidden items-center justify-between lg:flex"><p className="text-xs text-[#625B68]">Showing <span className="font-semibold text-[#17141C]">{filtered.length}</span> of {products.length} pieces</p><label className="flex items-center gap-2 text-xs text-[#625B68]">Sort by <select value={filters.sort ?? "newest"} onChange={(event) => update("sort", event.target.value)} className="rounded-full border border-[#E6E0EB] bg-white px-4 py-2.5 text-xs text-[#17141C] outline-none"><option value="newest">Newest</option><option value="popular">Popular</option><option value="price-low">Price: low to high</option><option value="price-high">Price: high to low</option></select></label></div>
+        <div><div className="mb-6 hidden items-center justify-between lg:flex"><p className="text-xs text-[#625B68]">Showing <span className="font-semibold text-[#17141C]">{firstItem}–{lastItem}</span> of {filtered.length} pieces</p><label className="flex items-center gap-2 text-xs text-[#625B68]">Sort by <select value={filters.sort ?? "newest"} onChange={(event) => update("sort", event.target.value)} className="rounded-full border border-[#E6E0EB] bg-white px-4 py-2.5 text-xs text-[#17141C] outline-none"><option value="newest">Newest</option><option value="popular">Popular</option><option value="price-low">Price: low to high</option><option value="price-high">Price: high to low</option></select></label></div>
           {filters.department === "underwear" && <div className="mb-6 flex items-start gap-3 rounded-2xl bg-[#F8F5FA] px-4 py-3 text-xs leading-5 text-[#625B68]"><span className="mt-0.5 font-semibold text-[#55239A]">18+</span><p>Intimate product images are blurred. Choose “I’m 18+ — show image” on a product image to reveal them for this browser.</p></div>}
-          <CatalogProductGrid products={filtered} emptyMessage={emptyMessage} currency={currency} />
+          <CatalogProductGrid products={pageProducts} emptyMessage={emptyMessage} currency={currency} />
+          {pageCount > 1 && <nav aria-label="Product pages" className="mt-10 flex flex-wrap items-center justify-center gap-2">
+            <button type="button" onClick={() => goToPage(currentPage - 1)} disabled={currentPage === 1} className="inline-flex items-center gap-1 rounded-full border border-[#E6E0EB] bg-white px-4 py-2.5 text-xs font-semibold text-[#55239A] transition hover:border-[#8B5BC7] disabled:cursor-not-allowed disabled:opacity-40"><ChevronLeft size={15} /> Previous</button>
+            {pageNumbers.map((number) => <button key={number} type="button" onClick={() => goToPage(number)} aria-current={number === currentPage ? "page" : undefined} aria-label={`Page ${number}`} className={`h-10 min-w-10 rounded-full border px-3 text-xs font-semibold transition ${number === currentPage ? "border-[#55239A] bg-[#55239A] text-white" : "border-[#E6E0EB] bg-white text-[#625B68] hover:border-[#8B5BC7]"}`}>{number}</button>)}
+            <button type="button" onClick={() => goToPage(currentPage + 1)} disabled={currentPage === pageCount} className="inline-flex items-center gap-1 rounded-full border border-[#E6E0EB] bg-white px-4 py-2.5 text-xs font-semibold text-[#55239A] transition hover:border-[#8B5BC7] disabled:cursor-not-allowed disabled:opacity-40">Next <ChevronRight size={15} /></button>
+          </nav>}
         </div>
       </div>
     </div>

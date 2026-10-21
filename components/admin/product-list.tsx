@@ -4,8 +4,10 @@
 import Link from "next/link";
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Copy, ExternalLink, Eye, EyeOff, LoaderCircle, Pencil, Plus, Search, Trash2 } from "lucide-react";
+import { ChevronLeft, ChevronRight, Copy, ExternalLink, Eye, EyeOff, LoaderCircle, Pencil, Plus, Search, Trash2 } from "lucide-react";
 import { createSupabaseBrowserClient } from "@/lib/supabase/browser";
+
+const PAGE_SIZE = 12;
 
 export type AdminProduct = {
   id: string;
@@ -21,11 +23,19 @@ export type AdminProduct = {
 
 export default function ProductList({ products }: { products: AdminProduct[] }) {
   const [search, setSearch] = useState("");
+  const [page, setPage] = useState(1);
   const [busyId, setBusyId] = useState<string | null>(null);
   const [message, setMessage] = useState("");
   const router = useRouter();
   const supabase = useMemo(() => createSupabaseBrowserClient(), []);
-  const visibleProducts = products.filter((product) => product.name.toLowerCase().includes(search.toLowerCase()));
+  const filteredProducts = products.filter((product) => product.name.toLowerCase().includes(search.toLowerCase()));
+  const pageCount = Math.max(1, Math.ceil(filteredProducts.length / PAGE_SIZE));
+  const currentPage = Math.min(page, pageCount);
+  const visibleProducts = filteredProducts.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
+  const firstItem = filteredProducts.length ? (currentPage - 1) * PAGE_SIZE + 1 : 0;
+  const lastItem = Math.min(currentPage * PAGE_SIZE, filteredProducts.length);
+  const pageWindowStart = Math.max(1, Math.min(currentPage - 2, pageCount - 4));
+  const pageNumbers = Array.from({ length: Math.min(5, pageCount) }, (_, index) => pageWindowStart + index);
   const formatCurrency = (price: number | string) => new Intl.NumberFormat("en-GH", { style: "currency", currency: "GHS", maximumFractionDigits: 2 }).format(Number(price));
 
   async function toggleVisibility(product: AdminProduct) {
@@ -111,7 +121,7 @@ export default function ProductList({ products }: { products: AdminProduct[] }) 
   return (
     <>
       <div className="flex flex-wrap items-center justify-between gap-4">
-        <label className="flex min-w-[220px] items-center gap-2 rounded-full border border-[#e6e0eb] bg-white px-4 py-2.5 sm:w-80"><Search size={17} className="text-[#817888]" /><span className="sr-only">Search products</span><input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search products" className="w-full bg-transparent text-sm outline-none placeholder:text-[#a49baa]" /></label>
+        <label className="flex min-w-[220px] items-center gap-2 rounded-full border border-[#e6e0eb] bg-white px-4 py-2.5 sm:w-80"><Search size={17} className="text-[#817888]" /><span className="sr-only">Search products</span><input value={search} onChange={(event) => { setSearch(event.target.value); setPage(1); }} placeholder="Search products" className="w-full bg-transparent text-sm outline-none placeholder:text-[#a49baa]" /></label>
         <Link href="/admin/products/new" className="inline-flex items-center gap-2 rounded-full bg-[#55239a] px-5 py-3 text-sm font-semibold text-white hover:bg-[#35115f]"><Plus size={17} /> Add product</Link>
       </div>
       {message && <p role="alert" className="mt-5 rounded-xl bg-red-50 px-4 py-3 text-sm text-red-800">{message}</p>}
@@ -142,6 +152,14 @@ export default function ProductList({ products }: { products: AdminProduct[] }) 
           );
         })}
       </div>
+      {pageCount > 1 && <nav aria-label="Product pages" className="mt-6 flex flex-wrap items-center justify-between gap-3">
+        <p className="text-xs text-[#817888]">Showing {firstItem}–{lastItem} of {filteredProducts.length} products</p>
+        <div className="flex flex-wrap items-center gap-2">
+          <button type="button" onClick={() => setPage(currentPage - 1)} disabled={currentPage === 1} className="inline-flex items-center gap-1 rounded-full border border-[#e6e0eb] bg-white px-4 py-2.5 text-xs font-semibold text-[#55239a] transition hover:border-[#8b5bc7] disabled:cursor-not-allowed disabled:opacity-40"><ChevronLeft size={15} /> Previous</button>
+          {pageNumbers.map((number) => <button key={number} type="button" onClick={() => setPage(number)} aria-current={number === currentPage ? "page" : undefined} aria-label={`Page ${number}`} className={`h-10 min-w-10 rounded-full border px-3 text-xs font-semibold transition ${number === currentPage ? "border-[#55239a] bg-[#55239a] text-white" : "border-[#e6e0eb] bg-white text-[#625b68] hover:border-[#8b5bc7]"}`}>{number}</button>)}
+          <button type="button" onClick={() => setPage(currentPage + 1)} disabled={currentPage === pageCount} className="inline-flex items-center gap-1 rounded-full border border-[#e6e0eb] bg-white px-4 py-2.5 text-xs font-semibold text-[#55239a] transition hover:border-[#8b5bc7] disabled:cursor-not-allowed disabled:opacity-40">Next <ChevronRight size={15} /></button>
+        </div>
+      </nav>}
     </>
   );
 }
