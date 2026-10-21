@@ -1,15 +1,48 @@
+import type { Metadata } from "next";
+import { cache } from "react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import CatalogImageGallery from "@/components/storefront/CatalogImageGallery";
 import CatalogProductGrid from "@/components/storefront/CatalogProductGrid";
 import ProductPurchasePanel from "@/components/storefront/ProductPurchasePanel";
+import ShareProductButton from "@/components/storefront/ShareProductButton";
 import { getCatalogProducts, getStoreSettings } from "@/lib/catalog";
 
 const money = (amount: number, currency: string) => new Intl.NumberFormat("en-GH", { style: "currency", currency, maximumFractionDigits: 2 }).format(amount);
 
+const getProductPageData = cache(async (slug: string) => {
+  const [products, settings] = await Promise.all([getCatalogProducts(), getStoreSettings()]);
+  return { products, settings, product: products.find((item) => item.slug === slug) ?? null };
+});
+
+export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
+  const { slug } = await params;
+  const { product, settings } = await getProductPageData(slug);
+  if (!product) return { title: "Product" };
+  const title = `${product.name} · ${money(product.price, settings.currency)}`;
+  const description = product.description || `Shop ${product.name} at Charwin Stores. Browse details and order directly on WhatsApp.`;
+  const image = product.images[0];
+  return {
+    title,
+    description,
+    openGraph: {
+      title,
+      description,
+      type: "website",
+      images: image ? [{ url: image.url, alt: image.altText || product.name }] : undefined,
+    },
+    twitter: {
+      card: image ? "summary_large_image" : "summary",
+      title,
+      description,
+      images: image ? [image.url] : undefined,
+    },
+  };
+}
+
 export default async function ProductPage({ params }: { params: Promise<{ slug: string }> }) {
-  const [{ slug }, products, settings] = await Promise.all([params, getCatalogProducts(), getStoreSettings()]);
-  const product = products.find((item) => item.slug === slug);
+  const { slug } = await params;
+  const { products, settings, product } = await getProductPageData(slug);
   if (!product) notFound();
 
   const related = products.filter((item) => item.id !== product.id && (
@@ -28,6 +61,7 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
         <p className="mb-3 text-[10px] font-semibold uppercase tracking-[.2em] text-[#8B5BC7]">{product.brand?.name ?? product.category.name}{product.subcategory ? ` · ${product.subcategory.name}` : ""}</p>
         <h1 className="font-[family-name:var(--font-playfair)] text-3xl font-medium leading-tight text-[#17141C] sm:text-4xl lg:text-[2.7rem]">{product.name}</h1>
         <div className="mt-4 flex flex-wrap items-center gap-3"><span className="text-xl font-semibold text-[#17141C]">{money(product.price, settings.currency)}</span>{product.compareAtPrice && product.compareAtPrice > product.price && <><span className="text-base text-[#8B8490] line-through">{money(product.compareAtPrice, settings.currency)}</span>{discount && <span className="rounded-full bg-[#F4EAFB] px-3 py-1 text-[10px] font-semibold text-[#55239A]">Save {discount}%</span>}</>}</div>
+        <ShareProductButton productName={product.name} price={money(product.price, settings.currency)} />
         <p className="mt-5 text-sm leading-7 text-[#625B68]">{product.description}</p>
         <div className="my-6"><ProductPurchasePanel product={product} settings={settings} /></div>
         <div className="divide-y divide-[#E6E0EB] border-y border-[#E6E0EB]">

@@ -62,14 +62,13 @@ export default function ProductEditor({ categories, subcategories, brands, tags,
   const [hidden, setHidden] = useState(product?.is_hidden ?? false);
   const [variants, setVariants] = useState<VariantDraft[]>(() => (product?.variants ?? []).flatMap((variant, index) => {
     const size = variant.size.trim().toUpperCase();
+    if (isBagProduct && size === "ONE SIZE") {
+      return [{ localId: variant.id ?? `saved-${index}`, size: "One size", color: variant.color, stock: String(variant.stock) }];
+    }
     return isStandardSize(size)
       ? [{ localId: variant.id ?? `saved-${index}`, size, color: variant.color, stock: String(variant.stock) }]
       : [];
   }));
-  const [bagStock, setBagStock] = useState(() => {
-    const oneSizeVariants = (product?.variants ?? []).filter((variant) => variant.size.trim().toLowerCase() === "one size");
-    return oneSizeVariants.length ? String(oneSizeVariants.reduce((total, variant) => total + Number(variant.stock || 0), 0)) : "";
-  });
   const hasLegacySizes = (product?.variants ?? []).some((variant) => !isStandardSize(variant.size.trim().toUpperCase()));
   const [selectedTagIds, setSelectedTagIds] = useState<string[]>(product?.tagIds ?? []);
   const [images, setImages] = useState(product?.images ?? []);
@@ -82,7 +81,6 @@ export default function ProductEditor({ categories, subcategories, brands, tags,
     const nextCategory = categories.find((category) => category.id === nextCategoryId);
     if (nextCategory?.department !== selectedCategory?.department) {
       setVariants([]);
-      setBagStock("");
     }
     setCategoryId(nextCategoryId);
     if (subcategories.find((subcategory) => subcategory.id === subcategoryId)?.category_id !== nextCategoryId) setSubcategoryId("");
@@ -110,6 +108,10 @@ export default function ProductEditor({ categories, subcategories, brands, tags,
     setVariants((current) => [...current, { localId: crypto.randomUUID(), size, color: "", stock: "" }]);
   }
 
+  function addBagColorOption() {
+    setVariants((current) => [...current, { localId: crypto.randomUUID(), size: "One size", color: "", stock: "" }]);
+  }
+
   function updateVariant(localId: string, key: "color" | "stock", value: string) {
     setVariants((current) => current.map((variant) => variant.localId === localId ? { ...variant, [key]: value } : variant));
   }
@@ -127,21 +129,14 @@ export default function ProductEditor({ categories, subcategories, brands, tags,
       setError("Add a product name, category, valid price, and a compare-at price that is at least the product price.");
       return;
     }
-    const validVariants = isBagProduct
-      ? [{ size: "One size", color: "Default", stock: bagStock.trim() === "" ? Number.NaN : Number(bagStock) }]
-      : variants.map((variant) => ({
-        size: variant.size.trim().toUpperCase(),
+    const validVariants = variants.map((variant) => ({
+        size: variant.size.trim().toUpperCase() === "ONE SIZE" ? "One size" : variant.size.trim().toUpperCase(),
         color: variant.color.trim(),
         stock: variant.stock.trim() === "" ? Number.NaN : Number(variant.stock),
-      }));
-    if (isBagProduct && (!Number.isInteger(validVariants[0].stock) || validVariants[0].stock < 0)) {
+      })).filter((variant) => !isBagProduct || variant.size === "One size");
+    if (validVariants.length === 0) {
       setPending(false);
-      setError("Enter a whole-number stock count for this bag.");
-      return;
-    }
-    if (!isBagProduct && validVariants.length === 0) {
-      setPending(false);
-      setError("Select at least one size and enter its stock count before saving.");
+      setError(isBagProduct ? "Add at least one colour and stock count for this bag." : "Select at least one size and enter its stock count before saving.");
       return;
     }
     if (validVariants.some((variant) => (!isBagProduct && !availableSizeSet.has(variant.size)) || !variant.color || !Number.isInteger(variant.stock) || variant.stock < 0)) {
@@ -285,8 +280,16 @@ export default function ProductEditor({ categories, subcategories, brands, tags,
           </div>
 
           <div className="rounded-2xl border border-[#ece6f0] bg-white p-5 sm:p-7">
-            <div><h2 className="text-2xl">{isBagProduct ? "Stock quantity" : isShoeProduct ? "Shoe sizes and stock" : "Sizes and stock"}</h2><p className="mt-1 text-sm text-[#817888]">{isBagProduct ? "Bags don’t need size options. Enter how many are available." : isShoeProduct ? "Select the UK shoe sizes you carry and enter the stock for each one." : "Select the sizes you carry. Shoppers can choose from these sizes on the product page."}</p>{!isBagProduct && <p className="mt-1 text-xs text-[#817888]">Enter the same colour name for each size in that colour; customers will see it as one selectable swatch.</p>}</div>
-            {isBagProduct ? <label className={`${labelClass} mt-5 block max-w-xs`}>Quantity in stock<input className={fieldClass} type="text" inputMode="numeric" pattern="[0-9]*" value={bagStock} onChange={(event) => setBagStock(event.target.value)} placeholder="e.g. 5" /></label> : <>
+            <div><h2 className="text-2xl">{isBagProduct ? "Colours and stock" : isShoeProduct ? "Shoe sizes and stock" : "Sizes and stock"}</h2><p className="mt-1 text-sm text-[#817888]">{isBagProduct ? "Bags don’t need size options. Add the colours you carry and stock for each one." : isShoeProduct ? "Select the UK shoe sizes you carry and enter the stock for each one." : "Select the sizes you carry. Shoppers can choose from these sizes on the product page."}</p><p className="mt-1 text-xs text-[#817888]">{isBagProduct ? "Customers will be able to choose a colour swatch." : "Enter the same colour name for each size in that colour; customers will see it as one selectable swatch."}</p></div>
+            {isBagProduct ? <div className="mt-5 space-y-3">
+              <button type="button" onClick={addBagColorOption} className="inline-flex items-center gap-1 text-xs font-semibold text-[#55239a] hover:underline"><Plus size={14} /> Add colour</button>
+              {variants.filter((variant) => variant.size === "One size").map((variant) => <div key={variant.localId} className="grid grid-cols-[minmax(0,1fr)_100px_36px] items-end gap-2 sm:grid-cols-[minmax(0,1fr)_140px_36px]">
+                <label className={`${labelClass} text-xs`}>Colour<div className="mt-2 flex items-center gap-2"><span className="h-5 w-5 shrink-0 rounded-full border border-black/10" style={{ backgroundColor: toCatalogColorOption(variant.color).hex }} /><input className={`${fieldClass} mt-0`} value={variant.color} onChange={(event) => updateVariant(variant.localId, "color", event.target.value)} placeholder="Black, Lilac, or #55239A" /></div></label>
+                <label className={`${labelClass} text-xs`}>Stock<input className={fieldClass} type="text" inputMode="numeric" pattern="[0-9]*" value={variant.stock} onChange={(event) => updateVariant(variant.localId, "stock", event.target.value)} placeholder="0" /></label>
+                <button type="button" aria-label={`Remove ${variant.color || "colour"} option`} onClick={() => setVariants((current) => current.filter((item) => item.localId !== variant.localId))} className="mb-1 rounded-lg p-2 text-[#817888] hover:bg-red-50 hover:text-[#b42318]"><Trash2 size={16} /></button>
+              </div>)}
+              {variants.filter((variant) => variant.size === "One size").length === 0 && <p className="rounded-xl border border-dashed border-[#d9cce7] px-4 py-5 text-center text-sm text-[#817888]">Add at least one colour to enter its stock.</p>}
+            </div> : <>
               {hasLegacySizes && <p className="mt-4 rounded-xl bg-[#f8f4fc] px-4 py-3 text-xs leading-5 text-[#625b68]">This product has an older size option that isn’t in the standard size list. Select the actual sizes and stock below; saving replaces the old option.</p>}
               <div className="mt-5 grid grid-cols-4 gap-2 sm:grid-cols-8">
                 {availableSizes.map((size) => {

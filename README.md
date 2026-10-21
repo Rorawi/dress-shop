@@ -61,7 +61,7 @@ The admin write policies check the Supabase Auth `app_metadata.role` claim for t
 ## Admin portal
 
 - `/admin` is the private dashboard. Sign in with the Supabase Auth account whose `app_metadata.role` is `admin`.
-- `/admin/quick-upload` accepts multiple photos or a camera capture. Each photo becomes its own draft product; edit quick details inline, then open the full editor to choose sizes and stock before publishing.
+- `/admin/quick-upload` accepts multiple photos or a camera capture. The WhatsApp intake can parse pasted captions into draft details and use AI to suggest a product name, description, colours, department, and fit from the first selected photo. Review suggestions, then set price and stock before publishing.
 - `/admin/products` manages existing items, including publish/unpublish, duplicate-as-draft, edit, and delete.
 - `/admin/settings` manages the storefront name, WhatsApp number, currency, announcement, categories, ordered shop sections, and seasonal or thrift collection tags.
 - Uploads are resized to 1800px, converted to WebP in the browser, and stored in the `product-images` bucket. Admin sessions and database row-level security protect all writes.
@@ -70,7 +70,7 @@ The admin write policies check the Supabase Auth `app_metadata.role` claim for t
 
 See `.env.example` for the current variable names. `NEXT_PUBLIC_WHATSAPP_NUMBER` is intentionally blank until the shop owner supplies the international phone number without a leading `+`. The site-settings row also leaves the number unset. `GHS` is the initial currency assumption.
 
-The `AI_VISION_PROVIDER` and `AI_VISION_API_KEY` variables are reserved for the configurable image-tagging integration in a later phase.
+The optional image-tagging assistant uses `AI_VISION_PROVIDER=openai`, `AI_VISION_MODEL=gpt-4.1-mini`, and `AI_VISION_API_KEY`. Add the key as a server-only variable in `.env.local` for local development and in Vercel project environment settings for the deployed site. Do not prefix it with `NEXT_PUBLIC_`. The admin-only analysis endpoint uses the key on the server; image suggestions never set a price or stock and must be reviewed before saving a draft.
 
 ## Supabase files
 

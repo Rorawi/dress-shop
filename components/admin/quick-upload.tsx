@@ -8,6 +8,7 @@ import { Camera, Check, ImagePlus, LoaderCircle, Pencil, Upload } from "lucide-r
 import { createSupabaseBrowserClient } from "@/lib/supabase/browser";
 import { optimizePhoto } from "@/lib/admin/image-utils";
 import type { AdminCategoryOption, AdminSubcategoryOption } from "@/components/admin/types";
+import WhatsAppImport from "@/components/admin/whatsapp-import";
 
 type DraftCard = {
   id: string;
@@ -126,6 +127,8 @@ export default function QuickUpload({ categories, subcategories }: { categories:
         <div><p className="text-sm font-semibold tracking-[.18em] text-[#8b5bc7]">QUICK INTAKE</p><h1 className="mt-2 text-4xl">Add new finds</h1><p className="mt-2 max-w-xl text-sm leading-6 text-[#625b68]">Choose a batch of product photos. Each photo gets its own draft listing; set its sizes and stock before publishing from the product editor.</p></div>
         <Link href="/admin/products" className="text-sm font-semibold text-[#55239a] hover:underline">All products →</Link>
       </div>
+
+      <WhatsAppImport categories={categories} subcategories={subcategories} />
 
       <section className="mt-8 rounded-2xl border border-[#e9e1f0] bg-white p-5 sm:p-7">
         <div className="flex flex-wrap items-center justify-between gap-5">
