@@ -6,13 +6,21 @@ import CategorySlider from "@/components/storefront/CategorySlider";
 import StorefrontFrame from "@/components/storefront/StorefrontFrame";
 import { getCatalogData } from "@/lib/catalog";
 
-const categories = [
-  { slug: "boxers", label: "Boxers", description: "A signature in everyday comfort", image: "photo-1618354691373-d851c5c3a990" },
-  { slug: "singlets", label: "Singlets", description: "Easy, unisex base layers", image: "photo-1627225924765-552d49cf47ad" },
-  { slug: "t-shirts", label: "Plain T-shirts", description: "The everyday staple", image: "photo-1521572163474-6864f9cf17ab" },
-  { slug: "matching-sets", label: "Matching sets", description: "Coordinated from top to bottom", image: "photo-1496747611176-843222e1e57c" },
-  { slug: "thrift-finds", label: "Thrift Finds", description: "One-off pieces, picked with care", image: "photo-1490481651871-ab68de25d43d", tag: "Thrift Finds" },
-  { slug: "womens-edit", label: "Women's Edit", description: "Fresh finds chosen with her in mind", image: "photo-1539008835657-9e8e9680c956", gender: "women" },
+type HomeCategoryEdit = {
+  slug: string;
+  label: string;
+  description: string;
+  tag?: string;
+  gender?: string;
+};
+
+const categoryEdits: HomeCategoryEdit[] = [
+  { slug: "boxers", label: "Boxers", description: "A signature in everyday comfort" },
+  { slug: "singlets", label: "Singlets", description: "Easy, unisex base layers" },
+  { slug: "t-shirts", label: "Plain T-shirts", description: "The everyday staple" },
+  { slug: "matching-sets", label: "Matching sets", description: "Coordinated from top to bottom" },
+  { slug: "thrift-finds", label: "Thrift Finds", description: "One-off pieces, picked with care", tag: "Thrift Finds" },
+  { slug: "womens-edit", label: "Women's Edit", description: "Fresh finds chosen with her in mind", gender: "women" },
 ];
 
 export default async function HomePage() {
@@ -22,14 +30,23 @@ export default async function HomePage() {
   const popular = products.filter((product) => product.tags.some((tag) => tag.slug === "popular")).slice(0, 4);
   const seasonal = products.filter((product) => settings.featuredSeasonTag && product.tags.some((tag) => tag.name === settings.featuredSeasonTag)).slice(0, 4);
   const shownFeatured = featured.length ? featured : newest;
+  const heroImage = (featured[0] ?? newest[0])?.images[0]?.url ?? null;
+  const categories = categoryEdits.map((category) => {
+    const matchingProduct = products.find((product) => {
+      if (category.tag) return product.tags.some((tag) => tag.name.toLowerCase() === category.tag?.toLowerCase());
+      if (category.gender) return product.gender === category.gender;
+      return product.subcategory?.slug === category.slug || product.category.slug === category.slug;
+    });
+    return { ...category, imageUrl: matchingProduct?.images[0]?.url ?? null };
+  });
 
   return <StorefrontFrame settings={settings}>
     <section className="relative isolate min-h-[610px] overflow-hidden bg-[#E8E2EB] sm:min-h-[690px]">
-      <Image src="https://images.unsplash.com/photo-1483985988355-763728e1935b?auto=format&fit=crop&w=2200&q=90" alt="Friends enjoying a day out in their favorite styles" fill priority sizes="100vw" className="-z-20 object-cover object-center" />
+      {heroImage ? <Image src={heroImage} alt="A featured piece from Charwin Stores" fill priority sizes="100vw" className="-z-20 object-cover object-center" /> : <div aria-hidden="true" className="absolute inset-0 -z-20 bg-[radial-gradient(ellipse_at_80%_30%,_#d8c6e9_0%,_#e8e2eb_48%,_#f8f5fa_100%)]" />}
       <div className="absolute inset-0 -z-10 bg-gradient-to-r from-white/95 via-white/78 to-white/10 sm:from-white/90 sm:via-white/55 sm:to-transparent" />
       <div className="mx-auto flex min-h-[610px] max-w-7xl items-center px-5 py-20 sm:min-h-[690px] sm:px-8 lg:px-10">
         <div className="max-w-xl animate-fade-in">
-          <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-[#55239A]/15 bg-white/75 px-4 py-2 text-[10px] font-semibold uppercase tracking-[.2em] text-[#55239A]"><Sparkles size={13} /> The Charwin edit</div>
+          <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-[#55239A]/15 bg-white/75 px-4 py-2 text-[10px] font-semibold uppercase tracking-[.2em] text-[#55239A]"><Sparkles size={13} /> Showroom edits</div>
           <h1 className="font-[family-name:var(--font-playfair)] text-[3.4rem] font-medium leading-[1.02] tracking-tight text-[#17141C] sm:text-7xl">Style that feels<br /><span className="italic text-[#55239A]">like you.</span></h1>
           <p className="mt-6 max-w-md text-sm leading-7 text-[#514954] sm:text-base">Thoughtful clothing and intimates for your days, your plans and everything in between. Find your next favorite.</p>
           <div className="mt-8 flex flex-wrap gap-3">
@@ -50,7 +67,7 @@ export default async function HomePage() {
 
     <section className="bg-[#FCFBFD] py-14 sm:py-20">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-        <div className="mb-8 flex items-end justify-between sm:mb-10"><div><p className="mb-2 text-[10px] font-semibold uppercase tracking-[.2em] text-[#8B5BC7]">Picked for the moment</p><h2 className="font-[family-name:var(--font-playfair)] text-3xl font-medium sm:text-4xl">The Charwin edit</h2><p className="mt-2 text-sm text-[#625B68]">A few pieces we can’t stop thinking about.</p></div><Link href="/shop" className="hidden items-center gap-2 pb-1 text-xs font-semibold text-[#55239A] sm:inline-flex">Shop all <ArrowRight size={14} /></Link></div>
+        <div className="mb-8 flex items-end justify-between sm:mb-10"><div><p className="mb-2 text-[10px] font-semibold uppercase tracking-[.2em] text-[#8B5BC7]">Picked for the moment</p><h2 className="font-[family-name:var(--font-playfair)] text-3xl font-medium sm:text-4xl">Showroom edits</h2><p className="mt-2 text-sm text-[#625B68]">A few pieces we can’t stop thinking about.</p></div><Link href="/shop" className="hidden items-center gap-2 pb-1 text-xs font-semibold text-[#55239A] sm:inline-flex">Shop all <ArrowRight size={14} /></Link></div>
         <CatalogProductGrid products={shownFeatured} currency={settings.currency} />
       </div>
     </section>

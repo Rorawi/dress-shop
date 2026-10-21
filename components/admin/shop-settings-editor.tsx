@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { ChevronDown, ChevronUp, LoaderCircle, Plus, Trash2 } from "lucide-react";
 import { createSupabaseBrowserClient } from "@/lib/supabase/browser";
 import { buildWhatsAppUrl, isValidWhatsAppNumber, normalizeWhatsAppNumber } from "@/lib/whatsapp";
@@ -155,7 +156,18 @@ export default function ShopSettingsEditor({ initialSettings, categories: initia
     <div className="space-y-6">
       {error && <p role="alert" className="rounded-xl bg-red-50 px-4 py-3 text-sm text-red-800">{error}</p>}
       {message && <p role="status" className="rounded-xl bg-emerald-50 px-4 py-3 text-sm text-emerald-800">{message}</p>}
-      <section className="rounded-2xl border border-[#ece6f0] bg-white p-5 sm:p-7">
+      <section className="rounded-2xl border border-[#ece6f0] bg-white p-5 sm:p-7" aria-labelledby="homepage-sections-title">
+        <div><h2 id="homepage-sections-title" className="text-2xl">Homepage sections</h2><p className="mt-1 text-sm text-[#817888]">Here’s what appears on the storefront and where to manage each collection.</p></div>
+        <ol className="mt-5 divide-y divide-[#f0ecf2]">
+          <li className="py-3"><p className="text-sm font-semibold">Christmas favorites</p><p className="mt-1 text-sm text-[#817888]">Choose a seasonal tag in <a className="font-medium text-[#55239a] underline underline-offset-2" href="#storefront-settings">Storefront settings</a>, then assign that tag to products in <Link className="font-medium text-[#55239a] underline underline-offset-2" href="/admin/products">Products</Link>. Create the tag under <a className="font-medium text-[#55239a] underline underline-offset-2" href="#tags-collections">Tags and collections</a>.</p></li>
+          <li className="py-3"><p className="text-sm font-semibold">Popular picks</p><p className="mt-1 text-sm text-[#817888]">Assign the Popular tag to products in <Link className="font-medium text-[#55239a] underline underline-offset-2" href="/admin/products">Products</Link>. Create the tag under <a className="font-medium text-[#55239a] underline underline-offset-2" href="#tags-collections">Tags and collections</a> if it is missing.</p></li>
+          <li className="py-3"><p className="text-sm font-semibold">Just arrived</p><p className="mt-1 text-sm text-[#817888]">Updates automatically with your newest published products.</p></li>
+          <li className="py-3"><p className="text-sm font-semibold">Showroom edits</p><p className="mt-1 text-sm text-[#817888]">Open a product and tick “Add to Showroom edits” to add it to this section. <Link className="font-medium text-[#55239a] underline underline-offset-2" href="/admin/products">Manage products</Link>.</p></li>
+          <li className="py-3"><p className="text-sm font-semibold">Find your kind of style</p><p className="mt-1 text-sm text-[#817888]">The cards are Boxers, Singlets, Plain T-shirts, Matching sets, Thrift Finds, and Women’s Edit. Their photos come from matching published products; manage those products in <Link className="font-medium text-[#55239a] underline underline-offset-2" href="/admin/products">Products</Link> and <a className="font-medium text-[#55239a] underline underline-offset-2" href="#shop-sections">Shop sections</a>.</p></li>
+        </ol>
+      </section>
+
+      <section id="storefront-settings" className="rounded-2xl border border-[#ece6f0] bg-white p-5 sm:p-7">
         <div><h2 className="text-2xl">Storefront settings</h2><p className="mt-1 text-sm text-[#817888]">These details appear across your public store.</p></div>
         <form onSubmit={saveSettings} className="mt-5 grid gap-5 sm:grid-cols-2">
           <label className="block text-sm font-medium">Shop name<input className={inputClass} value={shopName} onChange={(event) => setShopName(event.target.value)} /></label>
@@ -177,7 +189,7 @@ export default function ShopSettingsEditor({ initialSettings, categories: initia
         <div className="mt-5 divide-y divide-[#f0ecf2]">{categories.map((category) => <div key={category.id} className="flex items-center justify-between gap-4 py-3"><div><p className="text-sm font-semibold">{category.name}</p><p className="mt-1 text-xs text-[#817888]">{category.department === "underwear" ? "Underwear" : "Clothing"}</p></div><button disabled={busy} onClick={() => toggleCategory(category)} className={`rounded-full px-3 py-1.5 text-xs font-semibold ${category.is_active ? "bg-emerald-50 text-emerald-800" : "bg-slate-100 text-slate-700"}`}>{category.is_active ? "Active" : "Inactive"}</button></div>)}{categories.length === 0 && <p className="py-5 text-sm text-[#817888]">No categories yet. Create one above.</p>}</div>
       </section>
 
-      <section className="rounded-2xl border border-[#ece6f0] bg-white p-5 sm:p-7">
+      <section id="shop-sections" className="rounded-2xl border border-[#ece6f0] bg-white p-5 sm:p-7">
         <div><h2 className="text-2xl">Shop sections</h2><p className="mt-1 text-sm text-[#817888]">These are the sections customers browse. Add Boxers, Singlets, T-shirts, and Matching sets, then arrange their order.</p></div>
         <form onSubmit={addSubcategory} className="mt-5 grid gap-3 sm:grid-cols-[1fr_180px_auto]">
           <label className="sr-only" htmlFor="new-subcategory">Section name</label><input id="new-subcategory" className="rounded-xl border border-[#e6e0eb] px-4 py-3 text-sm outline-none focus:border-[#8b5bc7]" value={subcategoryName} onChange={(event) => setSubcategoryName(event.target.value)} placeholder="New shop section" />
@@ -191,7 +203,7 @@ export default function ShopSettingsEditor({ initialSettings, categories: initia
         })}{subcategories.length === 0 && <p className="py-5 text-sm text-[#817888]">No shop sections yet. Add your first one above.</p>}</div>
       </section>
 
-      <section className="rounded-2xl border border-[#ece6f0] bg-white p-5 sm:p-7">
+      <section id="tags-collections" className="rounded-2xl border border-[#ece6f0] bg-white p-5 sm:p-7">
         <div><h2 className="text-2xl">Tags and collections</h2><p className="mt-1 text-sm text-[#817888]">Use these for thrift collections, edits, and seasonal promotions.</p></div>
         <form onSubmit={addTag} className="mt-5 grid gap-3 sm:grid-cols-[1fr_180px_auto]">
           <label className="sr-only" htmlFor="new-tag">Tag name</label><input id="new-tag" className="rounded-xl border border-[#e6e0eb] px-4 py-3 text-sm outline-none focus:border-[#8b5bc7]" value={tagName} onChange={(event) => setTagName(event.target.value)} placeholder="New collection or tag" />

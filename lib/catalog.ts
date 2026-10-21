@@ -1,6 +1,5 @@
 import { createPublicSupabaseClient, hasPublicSupabaseConfig } from "@/lib/supabase/public";
 import { DEFAULT_STORE_SETTINGS, type CatalogCategory, type CatalogImage, type CatalogProduct, type CatalogTag, type CatalogVariant, type StoreSettings } from "@/lib/catalog-types";
-import { DEMO_PRODUCTS } from "@/lib/demo-catalog";
 import { normalizeWhatsAppNumber } from "@/lib/whatsapp";
 
 type RawRecord = Record<string, unknown>;
@@ -21,17 +20,25 @@ function one<T>(value: T | T[] | null | undefined): T | null {
   return Array.isArray(value) ? value[0] ?? null : value ?? null;
 }
 
+function isDemoImage(url: string) {
+  try {
+    return new URL(url).hostname === "images.unsplash.com";
+  } catch {
+    return false;
+  }
+}
+
 function normalizeProduct(row: RawProduct, supabase: ReturnType<typeof createPublicSupabaseClient>): CatalogProduct {
   const images: CatalogImage[] = (row.images ?? [])
     .slice()
     .sort((a, b) => a.position - b.position)
     .map((image) => ({
       id: image.id,
-      url: image.source_url ?? (image.storage_path ? supabase.storage.from("product-images").getPublicUrl(image.storage_path).data.publicUrl : ""),
+      url: image.storage_path ? supabase.storage.from("product-images").getPublicUrl(image.storage_path).data.publicUrl : image.source_url ?? "",
       altText: image.alt_text || row.name,
       position: image.position,
     }))
-    .filter((image) => image.url);
+    .filter((image) => image.url && !isDemoImage(image.url));
 
   return {
     id: row.id,
@@ -61,7 +68,10 @@ function normalizeProduct(row: RawProduct, supabase: ReturnType<typeof createPub
 }
 
 export async function getCatalogProducts(): Promise<CatalogProduct[]> {
-  if (!hasPublicSupabaseConfig()) return DEMO_PRODUCTS;
+  if (!hasPublicSupabaseConfig()) {
+    console.warn("Supabase catalog settings are missing; catalog products are unavailable.");
+    return [];
+  }
 
   try {
     const supabase = createPublicSupabaseClient();

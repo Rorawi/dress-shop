@@ -9,7 +9,7 @@ type CategorySlide = {
   slug: string;
   label: string;
   description: string;
-  image: string;
+  imageUrl: string | null;
   tag?: string;
   department?: string;
   gender?: string;
@@ -136,13 +136,13 @@ export default function CategorySlider({ categories }: { categories: CategorySli
               href={getCategoryHref(category)}
               className="group relative aspect-[.94/1] min-w-0 flex-[0_0_78%] snap-start overflow-hidden rounded-3xl bg-[#E9E3EC] sm:flex-[0_0_47%] lg:flex-[0_0_29.5%]"
             >
-              <Image
-                src={`https://images.unsplash.com/${category.image}?auto=format&fit=crop&w=900&q=85`}
+              {category.imageUrl ? <Image
+                src={category.imageUrl}
                 alt=""
                 fill
                 sizes="(max-width: 640px) 78vw, (max-width: 1024px) 47vw, 29.5vw"
                 className="object-cover transition duration-700 group-hover:scale-105"
-              />
+              /> : <div aria-hidden="true" className="absolute inset-0 bg-gradient-to-br from-[#35115F] via-[#55239A] to-[#8B5BC7]" />}
               <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/10 to-transparent" />
               <div className="absolute inset-x-0 bottom-0 p-5 text-white sm:p-6">
                 <p className="mb-2 text-[9px] font-semibold uppercase tracking-[.16em] text-white/75 sm:text-[10px]">

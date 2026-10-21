@@ -243,7 +243,7 @@ export default function ProductEditor({ categories, subcategories, brands, tags,
               <label className={labelClass}>Compare-at price (GHS)<input className={fieldClass} type="number" min="0" step="0.01" value={compareAtPrice} onChange={(event) => setCompareAtPrice(event.target.value)} placeholder="Optional" /></label>
             </div>
             <div className="mt-6 flex flex-wrap gap-x-6 gap-y-3 border-t border-[#eee9f1] pt-5">
-              <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={featured} onChange={(event) => setFeatured(event.target.checked)} className="accent-[#55239a]" /> Feature this product</label>
+              <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={featured} onChange={(event) => setFeatured(event.target.checked)} className="accent-[#55239a]" /> Add to Showroom edits</label>
               <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={discreetImage} onChange={(event) => setDiscreetImage(event.target.checked)} className="accent-[#55239a]" /> Blur image until shopper confirms 18+</label>
               {product && <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={hidden} onChange={(event) => setHidden(event.target.checked)} className="accent-[#55239a]" /> Hide from storefront</label>}
             </div>
