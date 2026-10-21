@@ -30,7 +30,6 @@ export default async function HomePage() {
   const popular = products.filter((product) => product.tags.some((tag) => tag.slug === "popular")).slice(0, 4);
   const seasonal = products.filter((product) => settings.featuredSeasonTag && product.tags.some((tag) => tag.name === settings.featuredSeasonTag)).slice(0, 4);
   const shownFeatured = featured.length ? featured : newest;
-  const heroImage = (featured[0] ?? newest[0])?.images[0]?.url ?? null;
   const categories = categoryEdits.map((category) => {
     const matchingProduct = products.find((product) => {
       if (category.tag) return product.tags.some((tag) => tag.name.toLowerCase() === category.tag?.toLowerCase());
@@ -42,11 +41,11 @@ export default async function HomePage() {
 
   return <StorefrontFrame settings={settings}>
     <section className="relative isolate min-h-[610px] overflow-hidden bg-[#E8E2EB] sm:min-h-[690px]">
-      {heroImage ? <Image src={heroImage} alt="A featured piece from Charwin Stores" fill priority sizes="100vw" className="-z-20 object-cover object-center" /> : <div aria-hidden="true" className="absolute inset-0 -z-20 bg-[radial-gradient(ellipse_at_80%_30%,_#d8c6e9_0%,_#e8e2eb_48%,_#f8f5fa_100%)]" />}
+      <div aria-hidden="true" className="absolute inset-0 -z-20 bg-[radial-gradient(ellipse_at_82%_34%,_#d8c6e9_0%,_#e8e2eb_48%,_#f8f5fa_100%)]" />
       <div className="absolute inset-0 -z-10 bg-gradient-to-r from-white/95 via-white/78 to-white/10 sm:from-white/90 sm:via-white/55 sm:to-transparent" />
       <div className="mx-auto flex min-h-[610px] max-w-7xl items-center px-5 py-20 sm:min-h-[690px] sm:px-8 lg:px-10">
         <div className="max-w-xl animate-fade-in">
-          <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-[#55239A]/15 bg-white/75 px-4 py-2 text-[10px] font-semibold uppercase tracking-[.2em] text-[#55239A]"><Sparkles size={13} /> Showroom edits</div>
+          <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-[#55239A]/15 bg-white/75 px-4 py-2 text-[10px] font-semibold uppercase tracking-[.2em] text-[#55239A]"><Sparkles size={13} /> Charwin Stores</div>
           <h1 className="font-[family-name:var(--font-playfair)] text-[3.4rem] font-medium leading-[1.02] tracking-tight text-[#17141C] sm:text-7xl">Style that feels<br /><span className="italic text-[#55239A]">like you.</span></h1>
           <p className="mt-6 max-w-md text-sm leading-7 text-[#514954] sm:text-base">Thoughtful clothing and intimates for your days, your plans and everything in between. Find your next favorite.</p>
           <div className="mt-8 flex flex-wrap gap-3">
@@ -56,7 +55,10 @@ export default async function HomePage() {
           <div className="mt-10 flex items-center gap-3 text-xs text-[#625B68]"><span className="h-px w-9 bg-[#8B5BC7]" />Chosen with care. Worn with confidence.</div>
         </div>
       </div>
-      <div className="absolute bottom-7 right-6 hidden text-[10px] uppercase tracking-[.25em] text-white [writing-mode:vertical-rl] sm:block">Charwin Stores · Ghana</div>
+      <div className="pointer-events-none absolute inset-y-0 right-0 -z-10 w-[45%] sm:w-[50%]">
+        <Image src="/brand/charwin-hero-shopping-bag.png" alt="Charwin Stores shopping bags" fill priority sizes="(max-width: 640px) 45vw, 50vw" className="object-contain object-right opacity-35 sm:opacity-100" />
+      </div>
+      <div className="absolute bottom-7 right-6 hidden text-[10px] uppercase tracking-[.25em] text-[#625B68] [writing-mode:vertical-rl] sm:block">Charwin Stores · Ghana</div>
     </section>
 
     <section className="border-b border-[#E6E0EB] bg-white py-14 sm:py-16">
