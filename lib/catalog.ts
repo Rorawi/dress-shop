@@ -1,6 +1,7 @@
 import { createPublicSupabaseClient, hasPublicSupabaseConfig } from "@/lib/supabase/public";
 import { DEFAULT_STORE_SETTINGS, type CatalogCategory, type CatalogImage, type CatalogProduct, type CatalogTag, type CatalogVariant, type StoreSettings } from "@/lib/catalog-types";
 import { DEMO_PRODUCTS } from "@/lib/demo-catalog";
+import { normalizeWhatsAppNumber } from "@/lib/whatsapp";
 
 type RawRecord = Record<string, unknown>;
 type RawImage = { id: string; storage_path: string | null; source_url: string | null; alt_text: string; position: number };
@@ -74,7 +75,7 @@ export async function getCatalogProducts(): Promise<CatalogProduct[]> {
     if (error) throw error;
     return ((data ?? []) as unknown as RawProduct[]).map((row) => normalizeProduct(row, supabase));
   } catch (error) {
-    console.error("Could not load the public Charwin catalog.", error);
+    console.warn("Could not load the public Charwin catalog; showing the empty catalog fallback.", error);
     return [];
   }
 }
@@ -83,7 +84,7 @@ export async function getStoreSettings(): Promise<StoreSettings> {
   const fallback: StoreSettings = {
     ...DEFAULT_STORE_SETTINGS,
     shopName: process.env.NEXT_PUBLIC_SHOP_NAME || DEFAULT_STORE_SETTINGS.shopName,
-    whatsappNumber: process.env.NEXT_PUBLIC_WHATSAPP_NUMBER?.replace(/\D/g, "") || "",
+    whatsappNumber: normalizeWhatsAppNumber(process.env.NEXT_PUBLIC_WHATSAPP_NUMBER),
     currency: process.env.NEXT_PUBLIC_SHOP_CURRENCY || DEFAULT_STORE_SETTINGS.currency,
   };
   if (!hasPublicSupabaseConfig()) return fallback;
@@ -101,13 +102,13 @@ export async function getStoreSettings(): Promise<StoreSettings> {
     const season = one(raw.featured_season_tag as { name: string } | { name: string }[] | null);
     return {
       shopName: String(raw.shop_name || fallback.shopName),
-      whatsappNumber: String(raw.whatsapp_number || fallback.whatsappNumber).replace(/\D/g, ""),
+      whatsappNumber: normalizeWhatsAppNumber(String(raw.whatsapp_number || fallback.whatsappNumber)),
       currency: String(raw.currency || fallback.currency),
       announcementBanner: raw.announcement_banner ? String(raw.announcement_banner) : null,
       featuredSeasonTag: season?.name ?? fallback.featuredSeasonTag,
     };
   } catch (error) {
-    console.error("Could not load Charwin site settings; using public defaults.", error);
+    console.warn("Could not load Charwin site settings; using public defaults.", error);
     return fallback;
   }
 }

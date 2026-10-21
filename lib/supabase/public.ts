@@ -22,6 +22,10 @@ export function hasPublicSupabaseConfig() {
   }
 }
 
+export function getSupabaseSchema() {
+  return process.env.NEXT_PUBLIC_SUPABASE_DB_SCHEMA?.trim() || "charwin_store";
+}
+
 /** Create a least-privileged Supabase client for public catalog reads. */
 export function createPublicSupabaseClient() {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL?.trim();
@@ -37,6 +41,7 @@ export function createPublicSupabaseClient() {
   }
 
   return createClient(url, publishableKey, {
+    db: { schema: getSupabaseSchema() },
     auth: {
       persistSession: false,
       autoRefreshToken: false,

@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import { Minus, Plus, ShoppingBag } from "lucide-react";
 import type { CatalogProduct, StoreSettings } from "@/lib/catalog-types";
 import type { CartItem } from "@/lib/cart";
@@ -8,10 +8,9 @@ import { useCartStore } from "@/lib/cart";
 import WhatsAppOrderDialog from "@/components/storefront/WhatsAppOrderDialog";
 import SizeGuideModal from "@/components/SizeGuideModal";
 
-const money = (amount: number, currency: string) => new Intl.NumberFormat("en-GH", { style: "currency", currency, maximumFractionDigits: 2 }).format(amount);
-
 export default function ProductPurchasePanel({ product, settings }: { product: CatalogProduct; settings: StoreSettings }) {
   const colors = [...new Set(product.variants.map((variant) => variant.color))];
+  const showColorSelector = colors.length > 1 || (colors.length === 1 && colors[0].trim().toLowerCase() !== "default");
   const [color, setColor] = useState(colors[0] ?? "Default");
   const [size, setSize] = useState("");
   const [quantity, setQuantity] = useState(1);
@@ -22,7 +21,7 @@ export default function ProductPurchasePanel({ product, settings }: { product: C
   const available = product.variants.some((variant) => variant.stock > 0);
   const firstImage = product.images[0]?.url ?? "";
 
-  const orderItem: CartItem[] = useMemo(() => selected ? [{
+  const orderItem: CartItem[] = selected ? [{
     productId: product.id,
     variantId: selected.id,
     name: product.name,
@@ -34,7 +33,7 @@ export default function ProductPurchasePanel({ product, settings }: { product: C
     stock: selected.stock,
     discreetImage: product.discreetImage,
     quantity,
-  }] : [], [firstImage, product, quantity, selected]);
+  }] : [];
 
   const handleAdd = () => {
     if (!selected) return;
@@ -44,7 +43,7 @@ export default function ProductPurchasePanel({ product, settings }: { product: C
   };
 
   return <div className="space-y-6">
-    {colors.length > 0 && <div>
+    {showColorSelector && <div>
       <div className="mb-3 flex items-center justify-between"><p className="text-sm font-semibold">Colour <span className="font-normal text-[#625B68]">/ {color}</span></p><span className="text-xs text-[#625B68]">{colors.length} option{colors.length === 1 ? "" : "s"}</span></div>
       <div className="flex flex-wrap gap-2">{colors.map((option) => {
         const selectedColor = option === color;

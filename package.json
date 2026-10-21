@@ -22,6 +22,7 @@
     "@prisma/client": "^7.8.0",
     "@stripe/react-stripe-js": "^6.6.0",
     "@stripe/stripe-js": "^9.8.0",
+    "@supabase/ssr": "^0.12.7",
     "@supabase/supabase-js": "^2.109.0",
     "@types/bcryptjs": "^2.4.6",
     "bcryptjs": "^3.0.3",

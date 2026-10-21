@@ -1,11 +1,10 @@
 import Link from "next/link";
 import { MessageCircle } from "lucide-react";
 import type { StoreSettings } from "@/lib/catalog-types";
+import { buildWhatsAppUrl } from "@/lib/whatsapp";
 
 export default function StorefrontFooter({ settings }: { settings: StoreSettings }) {
-  const waLink = settings.whatsappNumber
-    ? `https://wa.me/${settings.whatsappNumber}?text=${encodeURIComponent(`Hello ${settings.shopName}, I have a question about your store.`)}`
-    : null;
+  const waLink = buildWhatsAppUrl(settings.whatsappNumber, `Hello ${settings.shopName}, I have a question about your store.`);
 
   return <footer className="bg-[#17141C] text-white">
     <div className="mx-auto grid max-w-7xl gap-10 px-4 py-12 sm:px-6 md:grid-cols-[1.5fr_1fr_1fr] lg:px-8 lg:py-16">

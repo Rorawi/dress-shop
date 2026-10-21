@@ -1,6 +1,6 @@
 -- Starter catalog for local development. These example products are not real inventory.
 
-insert into public.categories (name, slug, department, sort_order)
+insert into charwin_store.categories (name, slug, department, sort_order)
 values
   ('Clothing', 'clothing', 'clothing', 0),
   ('Underwear', 'underwear', 'underwear', 1)
@@ -10,7 +10,7 @@ on conflict (slug) do update set
   sort_order = excluded.sort_order,
   is_active = true;
 
-insert into public.subcategories (category_id, name, slug, sort_order)
+insert into charwin_store.subcategories (category_id, name, slug, sort_order)
 select c.id, item.name, item.slug, item.sort_order
 from (values
   ('clothing', 'T-shirts', 't-shirts', 0),
@@ -29,20 +29,20 @@ from (values
   ('underwear', 'Panties', 'panties', 5),
   ('underwear', 'Sleepwear', 'sleepwear', 6)
 ) as item(category_slug, name, slug, sort_order)
-join public.categories c on c.slug = item.category_slug
+join charwin_store.categories c on c.slug = item.category_slug
 on conflict (category_id, slug) do update set
   name = excluded.name,
   sort_order = excluded.sort_order,
   is_active = true;
 
-insert into public.brands (name, slug)
+insert into charwin_store.brands (name, slug)
 values
   ('Charwin Edit', 'charwin-edit'),
   ('Lacoste', 'lacoste'),
   ('Everyday', 'everyday')
 on conflict (slug) do update set name = excluded.name;
 
-insert into public.tags (name, slug, kind, sort_order)
+insert into charwin_store.tags (name, slug, kind, sort_order)
 values
   ('New Arrival', 'new-arrival', 'collection', 0),
   ('Popular', 'popular', 'collection', 1),
@@ -72,7 +72,7 @@ with sample_products (
     ('Everyday Cotton Briefs', 'everyday-cotton-briefs', 'A comfortable cotton brief with a smooth finish and gentle stretch.', 'everyday', 'underwear', 'briefs', 'women', 'none', 'everyday', 95.00, null, true, false),
     ('Satin Floral Sleep Set', 'satin-floral-sleep-set', 'A matching satin sleep set with a soft floral print and relaxed fit.', 'charwin-edit', 'underwear', 'sleepwear', 'women', 'short', 'loungewear', 240.00, 285.00, true, true)
 )
-insert into public.products (
+insert into charwin_store.products (
   name, slug, description, brand_id, category_id, subcategory_id,
   gender, sleeve_length, style, price, compare_at_price, discreet_image, is_featured, is_published
 )
@@ -92,9 +92,9 @@ select
   sample.is_featured,
   true
 from sample_products sample
-join public.brands b on b.slug = sample.brand_slug
-join public.categories c on c.slug = sample.category_slug
-left join public.subcategories sc on sc.category_id = c.id and sc.slug = sample.subcategory_slug
+join charwin_store.brands b on b.slug = sample.brand_slug
+join charwin_store.categories c on c.slug = sample.category_slug
+left join charwin_store.subcategories sc on sc.category_id = c.id and sc.slug = sample.subcategory_slug
 on conflict (slug) do update set
   name = excluded.name,
   description = excluded.description,
@@ -137,12 +137,12 @@ with image_seed (product_slug, position, source_url, alt_text) as (
     ('satin-floral-sleep-set', 0, 'https://images.unsplash.com/photo-1618354691229-88d47f285158?auto=format&fit=crop&w=1000&q=85', 'Satin Floral Sleep Set'),
     ('satin-floral-sleep-set', 1, 'https://images.unsplash.com/photo-1583743814966-8936f37f4678?auto=format&fit=crop&w=1000&q=85', 'Satin Floral Sleep Set, alternate view')
 )
-insert into public.product_images (product_id, source_url, alt_text, position, is_primary)
+insert into charwin_store.product_images (product_id, source_url, alt_text, position, is_primary)
 select p.id, image.source_url, image.alt_text, image.position, image.position = 0
 from image_seed image
-join public.products p on p.slug = image.product_slug
+join charwin_store.products p on p.slug = image.product_slug
 where not exists (
-  select 1 from public.product_images existing
+  select 1 from charwin_store.product_images existing
   where existing.product_id = p.id and existing.position = image.position
 );
 
@@ -161,10 +161,10 @@ with variant_seed (product_slug, color, sizes, stock) as (
     ('everyday-cotton-briefs', 'Black', array['S', 'M', 'L', 'XL'], 7),
     ('satin-floral-sleep-set', 'Blush Floral', array['S', 'M', 'L', 'XL'], 2)
 )
-insert into public.product_variants (product_id, size, color, stock)
+insert into charwin_store.product_variants (product_id, size, color, stock)
 select p.id, sizes.size, variant_seed.color, variant_seed.stock
 from variant_seed
-join public.products p on p.slug = variant_seed.product_slug
+join charwin_store.products p on p.slug = variant_seed.product_slug
 cross join lateral unnest(variant_seed.sizes) as sizes(size)
 on conflict (product_id, size, color) do update set stock = excluded.stock;
 
@@ -181,14 +181,14 @@ with assignments (product_slug, tag_slug) as (
     ('satin-floral-sleep-set', 'new-arrival'),
     ('satin-floral-sleep-set', 'christmas')
 )
-insert into public.product_tags (product_id, tag_id)
+insert into charwin_store.product_tags (product_id, tag_id)
 select p.id, t.id
 from assignments a
-join public.products p on p.slug = a.product_slug
-join public.tags t on t.slug = a.tag_slug
+join charwin_store.products p on p.slug = a.product_slug
+join charwin_store.tags t on t.slug = a.tag_slug
 on conflict do nothing;
 
-insert into public.site_settings (
+insert into charwin_store.site_settings (
   id, shop_name, whatsapp_number, currency, featured_season_tag_id, announcement_banner
 )
 values (
@@ -196,7 +196,7 @@ values (
   'Charwin Stores',
   null,
   'GHS',
-  (select id from public.tags where slug = 'christmas'),
+  (select id from charwin_store.tags where slug = 'christmas'),
   null
 )
 on conflict (id) do update set

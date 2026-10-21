@@ -4,6 +4,7 @@ import { useState } from "react";
 import { MessageCircle, X } from "lucide-react";
 import type { CartItem } from "@/lib/cart";
 import type { StoreSettings } from "@/lib/catalog-types";
+import { buildWhatsAppUrl, isValidWhatsAppNumber } from "@/lib/whatsapp";
 
 interface WhatsAppOrderDialogProps {
   items: CartItem[];
@@ -21,16 +22,16 @@ export default function WhatsAppOrderDialog({ items, settings, label = "Order on
   const [area, setArea] = useState("");
   const [note, setNote] = useState("");
   const subtotal = items.reduce((sum, item) => sum + item.price * item.quantity, 0);
-  const unavailable = disabled || !settings.whatsappNumber || items.length === 0;
+  const validNumber = isValidWhatsAppNumber(settings.whatsappNumber);
+  const unavailable = disabled || !validNumber || items.length === 0;
 
   const submit = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     if (unavailable) return;
-    const lines = items.map((item, index) => `${index + 1}. ${item.name} — ${item.size}, ${item.color} × ${item.quantity} = ${money(item.price * item.quantity, settings.currency)}\n   ${window.location.origin}/shop/${item.slug}`);
     const message = [
       `Hello ${settings.shopName}, I’d like to place an order:`,
       "",
-      ...lines,
+      ...items.map((item, index) => `${index + 1}. ${item.name} — ${item.size}, ${item.color} × ${item.quantity} = ${money(item.price * item.quantity, settings.currency)}\n   ${window.location.origin}/shop/${item.slug}`),
       "",
       `Subtotal: ${money(subtotal, settings.currency)}`,
       `Name: ${name.trim() || "Not provided"}`,
@@ -38,8 +39,8 @@ export default function WhatsAppOrderDialog({ items, settings, label = "Order on
       note.trim() ? `Note: ${note.trim()}` : "",
       "Please confirm availability and delivery details. Thank you!",
     ].filter(Boolean).join("\n");
-    window.open(`https://wa.me/${settings.whatsappNumber}?text=${encodeURIComponent(message)}`, "_blank", "noopener,noreferrer");
-    setOpen(false);
+    const url = buildWhatsAppUrl(settings.whatsappNumber, message);
+    if (url) window.location.assign(url);
   };
 
   return (
@@ -48,6 +49,7 @@ export default function WhatsAppOrderDialog({ items, settings, label = "Order on
         <MessageCircle size={18} /> {settings.whatsappNumber ? label : "WhatsApp ordering setup pending"}
       </button>
       {!settings.whatsappNumber && <p className="mt-2 text-center text-xs text-[#625B68]">Add the shop WhatsApp number in site settings to enable orders.</p>}
+      {settings.whatsappNumber && !isValidWhatsAppNumber(settings.whatsappNumber) && <p className="mt-2 text-center text-xs text-[#B42318]">The shop WhatsApp number is invalid. Update it in site settings.</p>}
       {open && <div className="fixed inset-0 z-[70] flex items-end justify-center bg-black/45 p-0 backdrop-blur-sm sm:items-center sm:p-4" onMouseDown={(event) => { if (event.target === event.currentTarget) setOpen(false); }}>
         <section role="dialog" aria-modal="true" aria-labelledby="whatsapp-order-title" className="max-h-[92vh] w-full max-w-lg overflow-y-auto rounded-t-3xl bg-white p-5 shadow-2xl sm:rounded-3xl sm:p-7">
           <div className="mb-5 flex items-start justify-between gap-4">
@@ -62,7 +64,7 @@ export default function WhatsAppOrderDialog({ items, settings, label = "Order on
             <label className="block text-sm font-medium">Your name <span className="font-normal text-[#625B68]">(optional)</span><input value={name} onChange={(event) => setName(event.target.value)} className="mt-1.5 w-full rounded-xl border border-[#E6E0EB] px-4 py-3 outline-none focus:border-[#8B5BC7]" placeholder="Name" /></label>
             <label className="block text-sm font-medium">Delivery area <span className="font-normal text-[#625B68]">(optional)</span><input value={area} onChange={(event) => setArea(event.target.value)} className="mt-1.5 w-full rounded-xl border border-[#E6E0EB] px-4 py-3 outline-none focus:border-[#8B5BC7]" placeholder="Town or neighbourhood" /></label>
             <label className="block text-sm font-medium">Note <span className="font-normal text-[#625B68]">(optional)</span><textarea value={note} onChange={(event) => setNote(event.target.value)} rows={2} className="mt-1.5 w-full resize-y rounded-xl border border-[#E6E0EB] px-4 py-3 outline-none focus:border-[#8B5BC7]" placeholder="Anything else we should know?" /></label>
-            <button type="submit" className="flex w-full items-center justify-center gap-2 rounded-full bg-[#55239A] px-6 py-4 text-sm font-semibold text-white transition hover:bg-[#35115F]"><MessageCircle size={18} /> Continue to WhatsApp</button>
+            <button type="submit" disabled={unavailable} className="flex w-full items-center justify-center gap-2 rounded-full bg-[#55239A] px-6 py-4 text-sm font-semibold text-white transition hover:bg-[#35115F] disabled:cursor-not-allowed disabled:bg-[#E9E5EC] disabled:text-[#8B8490]"><MessageCircle size={18} /> {validNumber ? "Continue to WhatsApp" : "WhatsApp unavailable"}</button>
           </form>
         </section>
       </div>}

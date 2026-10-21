@@ -15,6 +15,11 @@ const nextConfig: NextConfig = {
         protocol: "https",
         hostname: "res.cloudinary.com", // for when you add real product images
       },
+      {
+        protocol: "https",
+        hostname: "ugtkutrgmhtydhhyypny.supabase.co",
+        pathname: "/storage/v1/object/public/product-images/**",
+      },
     ],
   },
 };
