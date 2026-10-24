@@ -35,11 +35,17 @@ export default function ProductPurchasePanel({ product, settings }: { product: C
     image: firstImage,
     stock: selected.stock,
     discreetImage: product.discreetImage,
+    shopId: product.shop?.id ?? "",
+    shopName: product.shop?.name ?? "",
+    shopSlug: product.shop?.slug ?? "",
+    whatsappNumber: product.shop?.whatsappNumber ?? "",
+    acceptsMobileMoney: product.shop?.acceptsMobileMoney ?? false,
+    acceptsCashOnDelivery: product.shop?.acceptsCashOnDelivery ?? false,
     quantity,
   }] : [];
 
   const handleAdd = () => {
-    if (!selected) return;
+    if (!selected || !product.shop) return;
     addItem({ ...orderItem[0], quantity });
     setAdded(true);
     window.setTimeout(() => setAdded(false), 2200);
@@ -68,10 +74,10 @@ export default function ProductPurchasePanel({ product, settings }: { product: C
     {selected && <p className="-mt-4 text-xs text-[#625B68]">{selected.stock <= 3 ? `Only ${selected.stock} left in stock` : "In stock"}</p>}
     {selected && <div className="flex items-center justify-between rounded-2xl border border-[#E6E0EB] p-3">
       <span className="pl-2 text-sm font-medium">Quantity</span>
-      <div className="flex items-center gap-4"><button type="button" onClick={() => setQuantity((current) => Math.max(1, current - 1))} aria-label="Decrease quantity" className="rounded-full p-2 hover:bg-[#F5F1F8]"><Minus size={15} /></button><span className="min-w-4 text-center text-sm font-semibold">{quantity}</span><button type="button" onClick={() => setQuantity((current) => Math.min(selected.stock, current + 1))} aria-label="Increase quantity" className="rounded-full p-2 hover:bg-[#F5F1F8]"><Plus size={15} /></button></div>
+      <div className="flex items-center gap-4"><button type="button" onClick={() => setQuantity((current) => Math.max(1, current - 1))} aria-label="Decrease quantity" className="rounded-full p-2 hover:bg-[#F5F1F8]"><Minus size={15} /></button><span className="min-w-4 text-center text-sm font-semibold">{quantity}</span><button type="button" onClick={() => setQuantity((current) => Math.min(selected.stock, 99, current + 1))} disabled={quantity >= Math.min(selected.stock, 99)} aria-label="Increase quantity" className="rounded-full p-2 hover:bg-[#F5F1F8] disabled:opacity-30"><Plus size={15} /></button></div>
     </div>}
     <div className="space-y-3">
-      <button type="button" onClick={handleAdd} disabled={!selected} className={`flex w-full items-center justify-center gap-2 rounded-full px-6 py-4 text-sm font-semibold transition ${selected ? "bg-[#17141C] text-white hover:bg-[#35115F]" : "cursor-not-allowed bg-[#E9E5EC] text-[#8B8490]"}`}><ShoppingBag size={18} />{added ? "Added to your bag" : selected ? "Add to bag" : available ? isBagProduct ? "Choose a colour" : "Choose your size" : "Sold out"}</button>
+      <button type="button" onClick={handleAdd} disabled={!selected || !product.shop} className={`flex w-full items-center justify-center gap-2 rounded-full px-6 py-4 text-sm font-semibold transition ${selected && product.shop ? "bg-[#17141C] text-white hover:bg-[#35115F]" : "cursor-not-allowed bg-[#E9E5EC] text-[#8B8490]"}`}><ShoppingBag size={18} />{added ? "Added to your bag" : !product.shop ? "Shop unavailable" : selected ? "Add to bag" : available ? isBagProduct ? "Choose a colour" : "Choose your size" : "Sold out"}</button>
       <WhatsAppOrderDialog items={orderItem} settings={settings} disabled={!selected} className="flex w-full items-center justify-center gap-2 rounded-full bg-[#55239A] px-6 py-4 text-sm font-semibold text-white transition hover:bg-[#35115F]" />
     </div>
     <div className="grid grid-cols-3 gap-2 border-t border-[#E6E0EB] pt-5 text-center text-[10px] leading-4 text-[#625B68] sm:text-xs"><div className="rounded-xl bg-[#FCFBFD] p-3">Order directly<br />on WhatsApp</div><div className="rounded-xl bg-[#FCFBFD] p-3">{isBagProduct ? <>Product questions<br />answered in chat</> : <>Personal sizing<br />assistance</>}</div><div className="rounded-xl bg-[#FCFBFD] p-3">Delivery details<br />confirmed in chat</div></div>

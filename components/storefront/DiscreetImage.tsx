@@ -9,13 +9,13 @@ interface DiscreetImageProps {
   alt: string;
   sizes: string;
   className?: string;
-  priority?: boolean;
+  preload?: boolean;
   discreet?: boolean;
   buttonClassName?: string;
   onRevealed?: () => void;
 }
 
-export default function DiscreetImage({ src, alt, sizes, className = "object-cover", priority = false, discreet = false, buttonClassName = "", onRevealed }: DiscreetImageProps) {
+export default function DiscreetImage({ src, alt, sizes, className = "object-cover", preload = false, discreet = false, buttonClassName = "", onRevealed }: DiscreetImageProps) {
   const [confirmed, setConfirmed] = useState(!discreet);
 
   useEffect(() => {
@@ -41,7 +41,7 @@ export default function DiscreetImage({ src, alt, sizes, className = "object-cov
         src={src}
         alt={alt}
         fill
-        priority={priority}
+        preload={preload}
         sizes={sizes}
         className={`${className} ${discreet && !confirmed ? "scale-105 blur-xl" : ""}`}
       />

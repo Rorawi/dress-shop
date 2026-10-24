@@ -1,11 +1,21 @@
 import type { MetadataRoute } from "next";
 
-export default function manifest(): MetadataRoute.Manifest {
+type ShareManifest = MetadataRoute.Manifest & {
+  share_target: {
+    action: string;
+    method: "POST";
+    enctype: "multipart/form-data";
+    params: { title: string; text: string; url: string; files: { name: string; accept: string[] }[] };
+  };
+};
+
+export default function manifest(): ShareManifest {
   return {
     name: "Charwin Stores",
     short_name: "Charwin Stores",
     description: "Clothing, intimates, bags, and shoes, selected with care.",
     start_url: "/",
+    id: "/",
     display: "standalone",
     background_color: "#FCFBFD",
     theme_color: "#55239A",
@@ -21,5 +31,16 @@ export default function manifest(): MetadataRoute.Manifest {
         type: "image/png",
       },
     ],
-  };
+    share_target: {
+      action: "/api/share-target",
+      method: "POST",
+      enctype: "multipart/form-data",
+      params: {
+        title: "title",
+        text: "text",
+        url: "url",
+        files: [{ name: "files", accept: ["image/jpeg", "image/png", "image/webp"] }],
+      },
+    },
+  } as ShareManifest;
 }

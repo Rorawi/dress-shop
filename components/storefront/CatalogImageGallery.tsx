@@ -1,7 +1,7 @@
 "use client";
 
 import Image from "next/image";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { ChevronLeft, ChevronRight, X } from "lucide-react";
 import type { CatalogImage } from "@/lib/catalog-types";
 import DiscreetImage from "@/components/storefront/DiscreetImage";
@@ -10,6 +10,7 @@ export default function CatalogImageGallery({ images, productName, discreet = fa
   const [activeIndex, setActiveIndex] = useState(0);
   const [zoomed, setZoomed] = useState(false);
   const [adultConfirmed, setAdultConfirmed] = useState(!discreet);
+  const touchStartX = useRef<number | null>(null);
   const active = images[activeIndex];
   const move = (direction: number) => setActiveIndex((index) => (index + direction + images.length) % images.length);
 
@@ -18,8 +19,8 @@ export default function CatalogImageGallery({ images, productName, discreet = fa
   }, [discreet]);
 
   return <div>
-    <div className="relative aspect-[4/5] overflow-hidden rounded-[1.4rem] bg-[#F3F0F5] sm:rounded-[1.8rem]">
-      {active ? <div className="absolute inset-0 block h-full w-full cursor-zoom-in" onClick={() => { if (!discreet || adultConfirmed) setZoomed(true); }}><DiscreetImage src={active.url} alt={active.altText || productName} sizes="(max-width:768px) 100vw,50vw" priority discreet={discreet} onRevealed={() => setAdultConfirmed(true)} /></div> : <div className="flex h-full items-center justify-center text-sm text-[#8B8490]">Product image coming soon</div>}
+    <div className="relative aspect-[4/5] touch-pan-y overflow-hidden rounded-[1.4rem] bg-[#F3F0F5] sm:rounded-[1.8rem]" onTouchStart={(event) => { touchStartX.current = event.touches[0]?.clientX ?? null; }} onTouchEnd={(event) => { const endX = event.changedTouches[0]?.clientX; if (touchStartX.current !== null && endX !== undefined && Math.abs(endX - touchStartX.current) > 45 && images.length > 1) move(endX < touchStartX.current ? 1 : -1); touchStartX.current = null; }}>
+      {active ? <div role="button" tabIndex={discreet && !adultConfirmed ? -1 : 0} aria-label={`Zoom image of ${productName}`} className="absolute inset-0 block h-full w-full cursor-zoom-in" onClick={() => { if (!discreet || adultConfirmed) setZoomed(true); }} onKeyDown={(event) => { if ((event.key === "Enter" || event.key === " ") && (!discreet || adultConfirmed)) { event.preventDefault(); setZoomed(true); } }}><DiscreetImage src={active.url} alt={active.altText || productName} sizes="(max-width:768px) 100vw,50vw" preload discreet={discreet} onRevealed={() => setAdultConfirmed(true)} /></div> : <div className="flex h-full items-center justify-center text-sm text-[#8B8490]">Product image coming soon</div>}
       {images.length > 1 && <>
         <button onClick={() => move(-1)} aria-label="Previous product image" className="absolute left-3 top-1/2 z-20 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full bg-white/90 shadow hover:bg-white"><ChevronLeft size={19} /></button>
         <button onClick={() => move(1)} aria-label="Next product image" className="absolute right-3 top-1/2 z-20 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full bg-white/90 shadow hover:bg-white"><ChevronRight size={19} /></button>

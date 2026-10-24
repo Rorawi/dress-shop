@@ -24,12 +24,14 @@ const categoryEdits: HomeCategoryEdit[] = [
 ];
 
 export default async function HomePage() {
-  const { products, settings } = await getCatalogData();
+  const { products, settings, shops } = await getCatalogData();
   const newest = [...products].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()).slice(0, 4);
   const featured = products.filter((product) => product.isFeatured).slice(0, 4);
   const popular = products.filter((product) => product.tags.some((tag) => tag.slug === "popular")).slice(0, 4);
   const seasonal = products.filter((product) => settings.featuredSeasonTag && product.tags.some((tag) => tag.name === settings.featuredSeasonTag)).slice(0, 4);
   const shownFeatured = featured.length ? featured : newest;
+  const featuredShops = shops.filter((shop) => shop.isFeatured).slice(0, 4);
+  const shownShops = featuredShops.length ? featuredShops : shops.slice(0, 4);
   const categories = categoryEdits.map((category) => {
     const matchingProduct = products.find((product) => {
       if (category.tag) return product.tags.some((tag) => tag.name.toLowerCase() === category.tag?.toLowerCase());
@@ -66,6 +68,14 @@ export default async function HomePage() {
         <CategorySlider categories={categories} />
       </div>
     </section>
+
+    {shownShops.length > 0 && <section className="bg-white py-14 sm:py-18"><div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+      <div className="mb-7 flex items-end justify-between gap-4"><div><p className="mb-2 text-[10px] font-semibold uppercase tracking-[.2em] text-[#8B5BC7]">Good finds, from local sellers</p><h2 className="font-[family-name:var(--font-playfair)] text-3xl font-medium sm:text-4xl">Featured shops</h2><p className="mt-2 text-sm text-[#625B68]">Meet the people behind the pieces.</p></div><Link href="/shop" className="hidden items-center gap-2 pb-1 text-xs font-semibold text-[#55239A] sm:inline-flex">Explore marketplace <ArrowRight size={14} /></Link></div>
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">{shownShops.map((shop) => <Link key={shop.id} href={`/s/${shop.slug}`} className="group overflow-hidden rounded-2xl border border-[#E6E0EB] bg-white transition hover:-translate-y-1 hover:shadow-lg">
+        <div className="relative h-28 overflow-hidden bg-[linear-gradient(135deg,#35115F,#8B5BC7)]">{shop.bannerUrl ? <Image src={shop.bannerUrl} alt="" fill unoptimized sizes="(max-width:640px) 100vw,25vw" className="object-cover transition duration-500 group-hover:scale-105" /> : <div className="absolute inset-0 bg-[radial-gradient(circle_at_80%_10%,_#D6C0F0_0%,_transparent_35%)]" />}</div>
+        <div className="relative px-4 pb-4 pt-0"><div className="relative -mt-7 mb-2 flex h-14 w-14 items-center justify-center overflow-hidden rounded-full border-4 border-white bg-[#F5F1F8] font-[family-name:var(--font-playfair)] text-xl font-semibold text-[#55239A]">{shop.logoUrl ? <Image src={shop.logoUrl} alt={`${shop.name} logo`} fill unoptimized sizes="56px" className="object-cover" /> : shop.name.slice(0, 1)}</div><h3 className="font-semibold text-[#17141C] group-hover:text-[#55239A]">{shop.name}</h3><p className="mt-1 line-clamp-2 min-h-10 text-xs leading-5 text-[#625B68]">{shop.bio || shop.location || "Browse the latest pieces from this local shop."}</p></div>
+      </Link>)}</div>
+    </div></section>}
 
     <section className="bg-[#FCFBFD] py-14 sm:py-20">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">

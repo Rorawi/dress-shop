@@ -60,7 +60,7 @@ function blobToDataUrl(blob: Blob): Promise<string> {
   });
 }
 
-export default function WhatsAppImport({ categories, subcategories }: { categories: AdminCategoryOption[]; subcategories: AdminSubcategoryOption[] }) {
+export default function WhatsAppImport({ categories, subcategories, shopId }: { categories: AdminCategoryOption[]; subcategories: AdminSubcategoryOption[]; shopId: string }) {
   const supabase = useMemo(() => createSupabaseBrowserClient(), []);
   const router = useRouter();
   const fileInput = useRef<HTMLInputElement>(null);
@@ -143,6 +143,7 @@ export default function WhatsAppImport({ categories, subcategories }: { categori
   async function importDraft() {
     const cleanName = name.trim();
     const amount = price.trim() === "" ? 0 : Number(price);
+    if (!shopId) { setError("Choose a seller shop before importing this product."); return; }
     if (!photos.length) { setError("Add at least one product photo."); return; }
     if (!cleanName || !categoryId || !Number.isFinite(amount) || amount < 0) { setError("Add a product name, category, and a valid storefront price. Leave the price empty if you still need to decide it."); return; }
 
@@ -161,6 +162,7 @@ export default function WhatsAppImport({ categories, subcategories }: { categori
     try {
       const idSuffix = crypto.randomUUID().slice(0, 8);
       const { data: created, error: createError } = await supabase.from("products").insert({
+        shop_id: shopId,
         name: cleanName,
         slug: `${slugify(cleanName) || "new-shop-find"}-${idSuffix}`,
         description: description.trim(),
@@ -169,6 +171,7 @@ export default function WhatsAppImport({ categories, subcategories }: { categori
         gender,
         price: amount,
         is_published: false,
+        moderation_status: "pending",
       }).select("id").single();
       if (createError || !created) throw createError ?? new Error("Could not create the product draft.");
       productId = created.id;
@@ -177,7 +180,7 @@ export default function WhatsAppImport({ categories, subcategories }: { categori
       for (const [index, photo] of photos.entries()) {
         setProgress(`Optimizing and uploading photo ${index + 1} of ${photos.length}…`);
         const optimized = await optimizePhoto(photo.file);
-        const path = `${user.id}/${productId}/${crypto.randomUUID()}.webp`;
+        const path = `${shopId}/${productId}/${crypto.randomUUID()}.webp`;
         const { error: uploadError } = await supabase.storage.from("product-images").upload(path, optimized, { contentType: "image/webp", upsert: false, cacheControl: "31536000" });
         if (uploadError) throw uploadError;
         uploadedPaths.push(path);

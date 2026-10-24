@@ -1,11 +1,15 @@
 import Link from "next/link";
-import { Camera, LayoutDashboard, Package, Settings2 } from "lucide-react";
+import { Camera, ClipboardCheck, Flag, LayoutDashboard, Package, Settings2, Store, SlidersHorizontal } from "lucide-react";
 import { logoutAdmin } from "@/app/(admin)/admin/actions";
 
 const navigation = [
   { href: "/admin", label: "Overview", icon: LayoutDashboard },
   { href: "/admin/quick-upload", label: "Quick upload", icon: Camera },
   { href: "/admin/products", label: "Products", icon: Package },
+  { href: "/admin/marketplace/shops", label: "Seller shops", icon: Store },
+  { href: "/admin/marketplace/review", label: "Review queue", icon: ClipboardCheck },
+  { href: "/admin/marketplace/reports", label: "Reports", icon: Flag },
+  { href: "/admin/marketplace/settings", label: "Marketplace policy", icon: SlidersHorizontal },
   { href: "/admin/settings", label: "Shop settings", icon: Settings2 },
 ];
 

@@ -12,6 +12,12 @@ export interface CartItem {
   image: string;
   stock: number;
   discreetImage: boolean;
+  shopId?: string;
+  shopName?: string;
+  shopSlug?: string;
+  whatsappNumber?: string;
+  acceptsMobileMoney?: boolean;
+  acceptsCashOnDelivery?: boolean;
   quantity: number;
 }
 
@@ -75,6 +81,6 @@ export const useCartStore = create<CartState>()(
       subtotal: () =>
         get().items.reduce((sum, i) => sum + i.price * i.quantity, 0),
     }),
-    { name: "charwin-store-cart-v2", skipHydration: true }
+    { name: "charwin-marketplace-cart-v3", skipHydration: true }
   )
 );

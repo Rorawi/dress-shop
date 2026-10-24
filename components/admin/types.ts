@@ -4,9 +4,11 @@ export type AdminCategoryOption = { id: string; name: string; department: Catalo
 export type AdminSubcategoryOption = { id: string; category_id: string; name: string; slug: string; sort_order: number; is_active: boolean; categoryName: string };
 export type AdminBrandOption = { id: string; name: string };
 export type AdminTagOption = { id: string; name: string; kind: "general" | "seasonal" | "collection" };
+export type AdminShopOption = { id: string; name: string; slug: string; status: string; verification_status: string };
 
 export type ProductEditorRecord = {
   id: string;
+  shop_id: string;
   name: string;
   slug: string;
   description: string;
@@ -19,6 +21,9 @@ export type ProductEditorRecord = {
   price: number | string;
   compare_at_price: number | string | null;
   is_published: boolean;
+  moderation_status: "pending" | "approved" | "rejected";
+  reviewed_at: string | null;
+  reviewed_by: string | null;
   is_hidden: boolean;
   is_featured: boolean;
   discreet_image: boolean;

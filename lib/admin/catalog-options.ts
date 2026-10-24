@@ -19,3 +19,8 @@ export async function getCatalogEditorOptions(supabase: SupabaseServerClient) {
     error: categoryResult.error ?? subcategoryResult.error ?? brandResult.error ?? tagResult.error,
   };
 }
+
+export async function getAdminShopOptions(supabase: SupabaseServerClient) {
+  const { data, error } = await supabase.from("shops").select("id,name,slug,status,verification_status").order("name");
+  return { shops: data ?? [], error };
+}

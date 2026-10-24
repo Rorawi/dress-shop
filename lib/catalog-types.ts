@@ -34,6 +34,25 @@ export interface CatalogTag {
   kind: "general" | "seasonal" | "collection";
 }
 
+export interface CatalogShop {
+  id: string;
+  name: string;
+  slug: string;
+  bio: string;
+  location: string;
+  whatsappNumber: string;
+  logoUrl: string | null;
+  bannerUrl: string | null;
+  instagramUrl: string | null;
+  snapchatUrl: string | null;
+  tiktokUrl: string | null;
+  facebookUrl: string | null;
+  websiteUrl: string | null;
+  acceptsMobileMoney: boolean;
+  acceptsCashOnDelivery: boolean;
+  isFeatured: boolean;
+}
+
 export interface CatalogProduct {
   id: string;
   name: string;
@@ -53,6 +72,7 @@ export interface CatalogProduct {
   isFeatured: boolean;
   discreetImage: boolean;
   createdAt: string;
+  shop?: CatalogShop | null;
 }
 
 export interface StoreSettings {

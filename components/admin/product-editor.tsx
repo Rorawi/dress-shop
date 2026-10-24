@@ -8,13 +8,14 @@ import { ArrowLeft, ImagePlus, LoaderCircle, Plus, Trash2, X } from "lucide-reac
 import { createSupabaseBrowserClient } from "@/lib/supabase/browser";
 import { optimizePhoto } from "@/lib/admin/image-utils";
 import { toCatalogColorOption } from "@/lib/catalog-colors";
-import type { AdminBrandOption, AdminCategoryOption, AdminSubcategoryOption, AdminTagOption, ProductEditorRecord } from "@/components/admin/types";
+import type { AdminBrandOption, AdminCategoryOption, AdminShopOption, AdminSubcategoryOption, AdminTagOption, ProductEditorRecord } from "@/components/admin/types";
 
 type Props = {
   categories: AdminCategoryOption[];
   subcategories: AdminSubcategoryOption[];
   brands: AdminBrandOption[];
   tags: AdminTagOption[];
+  shopOptions: AdminShopOption[];
   product?: ProductEditorRecord;
 };
 type NewPhoto = { key: string; file: File; preview: string };
@@ -36,7 +37,7 @@ function toSlug(value: string) {
 const fieldClass = "mt-2 w-full rounded-xl border border-[#e6e0eb] bg-white px-4 py-3 text-sm outline-none transition focus:border-[#8b5bc7] focus:ring-4 focus:ring-purple-100";
 const labelClass = "block text-sm font-medium text-[#29232f]";
 
-export default function ProductEditor({ categories, subcategories, brands, tags, product }: Props) {
+export default function ProductEditor({ categories, subcategories, brands, tags, shopOptions, product }: Props) {
   const router = useRouter();
   const supabase = useMemo(() => createSupabaseBrowserClient(), []);
   const fileInput = useRef<HTMLInputElement>(null);
@@ -45,6 +46,7 @@ export default function ProductEditor({ categories, subcategories, brands, tags,
   const [slugEdited, setSlugEdited] = useState(Boolean(product?.slug));
   const [description, setDescription] = useState(product?.description ?? "");
   const [categoryId, setCategoryId] = useState(product?.category_id ?? categories.find((category) => category.is_active)?.id ?? categories[0]?.id ?? "");
+  const [shopId, setShopId] = useState(product?.shop_id ?? shopOptions.find((shop) => shop.status === "active")?.id ?? shopOptions[0]?.id ?? "");
   const selectedCategory = categories.find((category) => category.id === categoryId);
   const isBagProduct = selectedCategory?.department === "bags";
   const isShoeProduct = selectedCategory?.department === "shoes";
@@ -129,6 +131,7 @@ export default function ProductEditor({ categories, subcategories, brands, tags,
       setError("Add a product name, category, valid price, and a compare-at price that is at least the product price.");
       return;
     }
+    if (!product && !shopId) { setPending(false); setError("Choose the seller shop that owns this product."); return; }
     const validVariants = variants.map((variant) => ({
         size: variant.size.trim().toUpperCase() === "ONE SIZE" ? "One size" : variant.size.trim().toUpperCase(),
         color: variant.color.trim(),
@@ -154,6 +157,7 @@ export default function ProductEditor({ categories, subcategories, brands, tags,
     if (!user) { setPending(false); setError("Your admin session has expired. Sign in again to continue."); return; }
 
     const productValues = {
+      shop_id: product?.shop_id ?? shopId,
       name: cleanName,
       slug: cleanSlug,
       description: description.trim(),
@@ -166,6 +170,10 @@ export default function ProductEditor({ categories, subcategories, brands, tags,
       price: amount,
       compare_at_price: compareAmount,
       is_published: publish,
+      moderation_status: publish ? "approved" : product?.moderation_status ?? "pending",
+      reviewed_at: publish ? new Date().toISOString() : product?.reviewed_at ?? null,
+      reviewed_by: publish ? user.id : product?.reviewed_by ?? null,
+      rejection_reason: publish ? null : undefined,
       is_hidden: hidden && !publish,
       is_featured: featured,
       discreet_image: discreetImage,
@@ -223,7 +231,7 @@ export default function ProductEditor({ categories, subcategories, brands, tags,
     for (const [index, photo] of photos.entries()) {
       try {
         const optimized = await optimizePhoto(photo.file);
-        const path = `${user.id}/${productId}/${crypto.randomUUID()}.webp`;
+        const path = `${product?.shop_id ?? shopId}/${productId}/${crypto.randomUUID()}.webp`;
         const { error: uploadError } = await supabase.storage.from("product-images").upload(path, optimized, { contentType: "image/webp", upsert: false, cacheControl: "31536000" });
         if (uploadError) throw uploadError;
         const { error: rowError } = await supabase.from("product_images").insert({ product_id: productId, storage_path: path, alt_text: cleanName, position: images.length + index, is_primary: images.length + index === 0 });
@@ -254,6 +262,7 @@ export default function ProductEditor({ categories, subcategories, brands, tags,
           <div className="rounded-2xl border border-[#ece6f0] bg-white p-5 sm:p-7">
             <h2 className="text-2xl">Product details</h2>
             <div className="mt-5 grid gap-5 sm:grid-cols-2">
+              {!product && <label className={`${labelClass} sm:col-span-2`}>Seller shop<select className={fieldClass} value={shopId} onChange={(event) => setShopId(event.target.value)} required><option value="">Choose a seller shop</option>{shopOptions.map((shop) => <option key={shop.id} value={shop.id}>{shop.name} · {shop.verification_status}</option>)}</select></label>}
               <label className={`${labelClass} sm:col-span-2`}>Product name<input className={fieldClass} value={name} onChange={(event) => { setName(event.target.value); if (!slugEdited) setSlug(toSlug(event.target.value)); }} placeholder="e.g. Soft cotton boxer brief" /></label>
               <label className={`${labelClass} sm:col-span-2`}>URL slug<input className={fieldClass} value={slug} onChange={(event) => { setSlug(event.target.value); setSlugEdited(true); }} placeholder="product-name" /></label>
               <label className={`${labelClass} sm:col-span-2`}>Description<textarea className={`${fieldClass} min-h-28 resize-y`} value={description} onChange={(event) => setDescription(event.target.value)} placeholder="Tell shoppers what makes this piece special." /></label>

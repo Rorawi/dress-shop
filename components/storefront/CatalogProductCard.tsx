@@ -17,7 +17,7 @@ export default function CatalogProductCard({ product, currency = "GHS" }: { prod
 
   return <article className="group min-w-0">
     <div className="relative aspect-[4/5] overflow-hidden rounded-[1.1rem] bg-[#F3F0F5]">
-      {image ? <DiscreetImage src={image.url} alt={image.altText || product.name} sizes="(max-width:640px) 50vw,(max-width:1024px) 33vw,25vw" className="pointer-events-none object-cover transition duration-700 group-hover:scale-[1.035]" discreet={product.discreetImage} /> : <div className="flex h-full items-center justify-center text-sm text-[#8B8490]">Image coming soon</div>}
+      {image ? <DiscreetImage src={image.url} alt={image.altText || product.name} sizes="(max-width:640px) 50vw,(max-width:1024px) 33vw,25vw" className={`pointer-events-none object-cover transition duration-700 group-hover:scale-[1.035] ${available ? "" : "grayscale opacity-60"}`} discreet={product.discreetImage} /> : <div className="flex h-full items-center justify-center text-sm text-[#8B8490]">Image coming soon</div>}
       <Link href={`/shop/${product.slug}`} aria-label={`View ${product.name}`} className="absolute inset-0 z-[1]" />
       <div className="pointer-events-none absolute left-3 top-3 z-20 flex flex-col items-start gap-1.5">
         {!available && <span className="rounded-full bg-white/95 px-3 py-1 text-[10px] font-semibold uppercase tracking-wider text-[#625B68]">Sold out</span>}
@@ -32,6 +32,7 @@ export default function CatalogProductCard({ product, currency = "GHS" }: { prod
         {firstColor && <span className="mt-0.5 h-2.5 w-2.5 shrink-0 rounded-full border border-black/10" title={firstColor.name} style={{ backgroundColor: firstColor.hex }} />}
       </div>
       <Link href={`/shop/${product.slug}`} className="line-clamp-2 text-sm font-medium leading-snug text-[#17141C] transition group-hover:text-[#55239A]">{product.name}</Link>
+      {product.shop && <Link href={`/s/${product.shop.slug}`} className="mt-1 inline-block text-[10px] text-[#625B68] hover:text-[#55239A]">From {product.shop.name}</Link>}
       <div className="mt-2 flex items-center gap-2">
         <span className="text-sm font-semibold text-[#17141C]">{money(product.price, currency)}</span>
         {product.compareAtPrice && product.compareAtPrice > product.price && <span className="text-xs text-[#8B8490] line-through">{money(product.compareAtPrice, currency)}</span>}

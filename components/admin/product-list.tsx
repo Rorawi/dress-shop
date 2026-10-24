@@ -41,7 +41,11 @@ export default function ProductList({ products }: { products: AdminProduct[] }) 
   async function toggleVisibility(product: AdminProduct) {
     setBusyId(product.id);
     setMessage("");
-    const { error } = await supabase.from("products").update(product.is_published ? { is_published: false } : { is_published: true, is_hidden: false }).eq("id", product.id);
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) { setBusyId(null); return setMessage("Your admin session has expired. Sign in again."); }
+    const { error } = await supabase.from("products").update(product.is_published
+      ? { is_published: false }
+      : { is_published: true, is_hidden: false, admin_hidden: false, moderation_status: "approved", reviewed_at: new Date().toISOString(), reviewed_by: user.id, rejection_reason: null }).eq("id", product.id);
     setBusyId(null);
     if (error) return setMessage(error.message);
     router.refresh();
@@ -54,7 +58,7 @@ export default function ProductList({ products }: { products: AdminProduct[] }) 
     const { data: copy, error } = await supabase.from("products").select("*").eq("id", product.id).single();
     if (error || !copy) { setBusyId(null); return setMessage(error?.message ?? "Could not read that product."); }
     const fields = Object.fromEntries(Object.entries(copy).filter(([key]) => !["id", "created_at", "updated_at"].includes(key)));
-    const { data: created, error: insertError } = await supabase.from("products").insert({ ...fields, name: `${product.name} copy`, slug: newSlug, is_published: false, is_hidden: false, is_featured: false }).select("id").single();
+    const { data: created, error: insertError } = await supabase.from("products").insert({ ...fields, name: `${product.name} copy`, slug: newSlug, is_published: false, is_hidden: false, is_featured: false, moderation_status: "pending", moderation_verdict: null, moderation_reason: null, rejection_reason: null, admin_hidden: false, admin_hidden_reason: null, admin_hidden_at: null, reviewed_at: null, reviewed_by: null }).select("id").single();
     if (insertError || !created) { setBusyId(null); return setMessage(insertError?.message ?? "Could not duplicate that product."); }
     const [variantsResult, imagesResult, tagLinksResult, userResult] = await Promise.all([
       supabase.from("product_variants").select("size,color,stock").eq("product_id", product.id),
@@ -76,7 +80,7 @@ export default function ProductList({ products }: { products: AdminProduct[] }) 
           if (!userResult.data.user) throw new Error("Your admin session has expired. Sign in again.");
           const { data: imageBlob, error: downloadError } = await supabase.storage.from("product-images").download(storagePath);
           if (downloadError || !imageBlob) throw downloadError ?? new Error("Could not copy the product photo.");
-          storagePath = `${userResult.data.user.id}/${created.id}/${crypto.randomUUID()}.webp`;
+          storagePath = `${copy.shop_id}/${created.id}/${crypto.randomUUID()}.webp`;
           const { error: uploadError } = await supabase.storage.from("product-images").upload(storagePath, imageBlob, { contentType: imageBlob.type || "image/webp", cacheControl: "31536000" });
           if (uploadError) throw uploadError;
           newStoragePaths.push(storagePath);

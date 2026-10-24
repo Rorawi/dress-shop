@@ -40,7 +40,7 @@ function editDistance(a: string, b: string) {
 }
 
 function fuzzyMatch(query: string, product: CatalogProduct) {
-  const fields = [product.name, product.description, product.brand?.name ?? "", product.category.name, product.subcategory?.name ?? "", product.style ?? "", ...product.variants.flatMap((variant) => [variant.color, variant.size]), ...product.tags.map((tag) => tag.name)].map(normalize);
+  const fields = [product.name, product.description, product.brand?.name ?? "", product.shop?.name ?? "", product.category.name, product.subcategory?.name ?? "", product.style ?? "", ...product.variants.flatMap((variant) => [variant.color, variant.size]), ...product.tags.map((tag) => tag.name)].map(normalize);
   const terms = normalize(query).split(/\s+/).filter(Boolean);
   return terms.every((term) => fields.some((field) => {
     if (field.includes(term)) return true;
@@ -57,6 +57,7 @@ export default function ProductListing({ products, initialFilters = {}, currency
     setPage(pageFromFilter(initialFilters.page));
   }, [initialFilters]);
   const brands = unique(products.map((product) => product.brand?.name ?? ""));
+  const shops = [...new Map(products.flatMap((product) => product.shop ? [[product.shop.id, product.shop] as const] : [])).values()].sort((a, b) => a.name.localeCompare(b.name));
   const departmentSlugs = new Set<string>(CATALOG_DEPARTMENTS.map((department) => department.value));
   const categories = unique([
     ...products.map((product) => product.category.slug).filter((slug) => !departmentSlugs.has(slug)),
@@ -106,6 +107,7 @@ export default function ProductListing({ products, initialFilters = {}, currency
       if (filters.category && filters.category !== product.subcategory?.slug && filters.category !== product.category.slug) return false;
       if (filters.gender && filters.gender !== product.gender) return false;
       if (filters.brand && filters.brand !== product.brand?.name) return false;
+      if (filters.shop && filters.shop !== product.shop?.slug) return false;
       if (filters.color && !product.variants.some((variant) => colorKey(variant.color) === colorKey(filters.color!))) return false;
       if (filters.size && !product.variants.some((variant) => variant.size === filters.size && variant.stock > 0)) return false;
       if (filters.sleeveLength && filters.sleeveLength !== product.sleeveLength) return false;
@@ -141,6 +143,7 @@ export default function ProductListing({ products, initialFilters = {}, currency
     <label className="block text-xs font-semibold uppercase tracking-wider text-[#625B68]">Category<select value={filters.category ?? ""} onChange={(event) => update("category", event.target.value)} className="mt-2 w-full rounded-xl border border-[#E6E0EB] bg-white px-3 py-3 text-sm font-normal normal-case tracking-normal text-[#17141C] outline-none focus:border-[#8B5BC7]"><option value="">All categories</option>{categories.map((item) => <option key={item} value={item}>{titleCase(item)}</option>)}</select></label>
     <label className="block text-xs font-semibold uppercase tracking-wider text-[#625B68]">Gender<select value={filters.gender ?? ""} onChange={(event) => update("gender", event.target.value)} className="mt-2 w-full rounded-xl border border-[#E6E0EB] bg-white px-3 py-3 text-sm font-normal normal-case tracking-normal text-[#17141C] outline-none focus:border-[#8B5BC7]"><option value="">Any</option><option value="women">Women</option><option value="men">Men</option><option value="unisex">Unisex</option><option value="kids">Kids</option></select></label>
     <label className="block text-xs font-semibold uppercase tracking-wider text-[#625B68]">Brand<select value={filters.brand ?? ""} onChange={(event) => update("brand", event.target.value)} className="mt-2 w-full rounded-xl border border-[#E6E0EB] bg-white px-3 py-3 text-sm font-normal normal-case tracking-normal text-[#17141C] outline-none focus:border-[#8B5BC7]"><option value="">All brands</option>{brands.map((brand) => <option key={brand}>{brand}</option>)}</select></label>
+    <label className="block text-xs font-semibold uppercase tracking-wider text-[#625B68]">Shop<select value={filters.shop ?? ""} onChange={(event) => update("shop", event.target.value)} className="mt-2 w-full rounded-xl border border-[#E6E0EB] bg-white px-3 py-3 text-sm font-normal normal-case tracking-normal text-[#17141C] outline-none focus:border-[#8B5BC7]"><option value="">All shops</option>{shops.map((shop) => <option key={shop.id} value={shop.slug}>{shop.name}</option>)}</select></label>
     {colors.length > 0 && <div><p className="text-xs font-semibold uppercase tracking-wider text-[#625B68]">Colour</p><div className="mt-2 flex flex-wrap gap-2">{colors.map((color) => {
       const selected = colorKey(filters.color ?? "") === color.key;
       return <button key={color.key} type="button" onClick={() => update("color", selected ? "" : color.name)} aria-pressed={selected} className={`inline-flex items-center gap-2 rounded-full border px-3 py-2 text-xs font-medium normal-case tracking-normal transition ${selected ? "border-[#55239A] bg-[#F5F1F8] text-[#35115F]" : "border-[#E6E0EB] bg-white text-[#625B68] hover:border-[#8B5BC7]"}`}><span className="h-3.5 w-3.5 rounded-full border border-black/10" style={{ backgroundColor: color.hex }} />{color.name}</button>;

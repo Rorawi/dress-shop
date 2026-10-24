@@ -7,7 +7,7 @@ import { useRouter } from "next/navigation";
 import { Camera, Check, ImagePlus, LoaderCircle, Pencil, Upload } from "lucide-react";
 import { createSupabaseBrowserClient } from "@/lib/supabase/browser";
 import { optimizePhoto } from "@/lib/admin/image-utils";
-import type { AdminCategoryOption, AdminSubcategoryOption } from "@/components/admin/types";
+import type { AdminCategoryOption, AdminShopOption, AdminSubcategoryOption } from "@/components/admin/types";
 import WhatsAppImport from "@/components/admin/whatsapp-import";
 
 type DraftCard = {
@@ -21,7 +21,7 @@ type DraftCard = {
 
 const slugify = (text: string) => text.normalize("NFKD").toLowerCase().trim().replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
 
-export default function QuickUpload({ categories, subcategories }: { categories: AdminCategoryOption[]; subcategories: AdminSubcategoryOption[] }) {
+export default function QuickUpload({ categories, subcategories, shops }: { categories: AdminCategoryOption[]; subcategories: AdminSubcategoryOption[]; shops: AdminShopOption[] }) {
   const supabase = useMemo(() => createSupabaseBrowserClient(), []);
   const router = useRouter();
   const galleryInput = useRef<HTMLInputElement>(null);
@@ -32,6 +32,7 @@ export default function QuickUpload({ categories, subcategories }: { categories:
   const [busyId, setBusyId] = useState<string | null>(null);
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
+  const [shopId, setShopId] = useState(shops.find((shop) => shop.status === "active")?.id ?? shops[0]?.id ?? "");
 
   function updateDraft(id: string, key: "name" | "categoryId" | "subcategoryId" | "price", value: string) {
     setDrafts((current) => current.map((draft) => draft.id === id ? { ...draft, [key]: value } : draft));
@@ -40,6 +41,7 @@ export default function QuickUpload({ categories, subcategories }: { categories:
   async function createDrafts(fileList: FileList | null) {
     if (!fileList?.length) return;
     if (!categories.length) { setError("Add a category in Shop settings before uploading products."); return; }
+    if (!shopId) { setError("Choose a seller shop before uploading products."); return; }
     const files = Array.from(fileList);
     setUploading(true); setError(""); setMessage("");
     if (galleryInput.current) galleryInput.current.value = "";
@@ -59,6 +61,7 @@ export default function QuickUpload({ categories, subcategories }: { categories:
         const name = baseName || "New shop find";
         const idSuffix = crypto.randomUUID().slice(0, 8);
         const { data: product, error: productError } = await supabase.from("products").insert({
+          shop_id: shopId,
           name,
           slug: `${slugify(name) || "new-shop-find"}-${idSuffix}`,
           category_id: defaultCategory.id,
@@ -67,11 +70,12 @@ export default function QuickUpload({ categories, subcategories }: { categories:
           price: 0,
           description: "",
           is_published: false,
+          moderation_status: "pending",
         }).select("id").single();
         if (productError || !product) throw productError ?? new Error("Could not make a draft product.");
         productId = product.id;
         const optimized = await optimizePhoto(file);
-        path = `${user.id}/${productId}/${crypto.randomUUID()}.webp`;
+        path = `${shopId}/${productId}/${crypto.randomUUID()}.webp`;
         const { error: uploadError } = await supabase.storage.from("product-images").upload(path, optimized, { contentType: "image/webp", upsert: false, cacheControl: "31536000" });
         if (uploadError) throw uploadError;
         const { error: imageError } = await supabase.from("product_images").insert({ product_id: productId, storage_path: path, alt_text: name, position: 0, is_primary: true });
@@ -128,13 +132,14 @@ export default function QuickUpload({ categories, subcategories }: { categories:
         <Link href="/admin/products" className="text-sm font-semibold text-[#55239a] hover:underline">All products →</Link>
       </div>
 
-      <WhatsAppImport categories={categories} subcategories={subcategories} />
+      <div className="mt-7 max-w-md"><label className="block text-sm font-semibold">Add drafts to shop<select className="mt-2 w-full rounded-xl border border-[#e6e0eb] bg-white px-4 py-3 text-sm" value={shopId} onChange={(event) => setShopId(event.target.value)}><option value="">Choose a seller shop</option>{shops.map((shop) => <option key={shop.id} value={shop.id}>{shop.name} · {shop.status}</option>)}</select></label></div>
+      <WhatsAppImport categories={categories} subcategories={subcategories} shopId={shopId} />
 
       <section className="mt-8 rounded-2xl border border-[#e9e1f0] bg-white p-5 sm:p-7">
         <div className="flex flex-wrap items-center justify-between gap-5">
           <div><h2 className="text-2xl">Upload product photos</h2><p className="mt-1 text-sm text-[#817888]">JPG, PNG, WebP and phone photos. Images are optimized before upload.</p></div>
           <div className="flex flex-wrap gap-3">
-            <button type="button" disabled={uploading || categories.length === 0} onClick={() => galleryInput.current?.click()} className="inline-flex items-center gap-2 rounded-full border border-[#d9cce7] px-5 py-3 text-sm font-semibold text-[#55239a] hover:bg-[#f8f4fc] disabled:opacity-50"><ImagePlus size={17} /> Choose photos</button>
+            <button type="button" disabled={uploading || categories.length === 0 || !shopId} onClick={() => galleryInput.current?.click()} className="inline-flex items-center gap-2 rounded-full border border-[#d9cce7] px-5 py-3 text-sm font-semibold text-[#55239a] hover:bg-[#f8f4fc] disabled:opacity-50"><ImagePlus size={17} /> Choose photos</button>
             <button type="button" disabled={uploading || categories.length === 0} onClick={() => cameraInput.current?.click()} className="inline-flex items-center gap-2 rounded-full bg-[#55239a] px-5 py-3 text-sm font-semibold text-white hover:bg-[#35115f] disabled:opacity-50"><Camera size={17} /> Take photo</button>
           </div>
           <input ref={galleryInput} type="file" accept="image/*" multiple className="sr-only" onChange={(event) => createDrafts(event.target.files)} />
