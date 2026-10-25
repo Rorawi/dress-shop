@@ -12,6 +12,17 @@ const clean = (value: FormDataEntryValue | null, max = 180) => String(value ?? "
 const slugify = (value: string) => value.normalize("NFKD").toLowerCase().trim().replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
 const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
+const AUTH_TIMEOUT_MS = 6_000;
+
+function withAuthTimeout<T>(promiseLike: PromiseLike<T>): Promise<T> {
+  return Promise.race([
+    Promise.resolve(promiseLike),
+    new Promise<never>((_, reject) =>
+      setTimeout(() => reject(new Error("Auth request timed out")), AUTH_TIMEOUT_MS)
+    ),
+  ]);
+}
+
 export async function registerSeller(_previous: SellerAuthState, formData: FormData): Promise<SellerAuthState> {
   const name = clean(formData.get("shop_name"));
   const ownerName = clean(formData.get("owner_name"));
@@ -44,11 +55,21 @@ export async function registerSeller(_previous: SellerAuthState, formData: FormD
   try { service = createServiceRoleSupabaseClient(); }
   catch { return { error: "Seller registration is not ready yet. The server-side Supabase key must be configured." }; }
 
-  const { data, error } = await supabase.auth.signUp({
-    email,
-    password,
-    options: { data: { full_name: ownerName } },
-  });
+  let authResponse;
+  try {
+    authResponse = await withAuthTimeout(
+      supabase.auth.signUp({
+        email,
+        password,
+        options: { data: { full_name: ownerName } },
+      })
+    );
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : "";
+    if (msg.includes("timed out")) return { error: "Could not reach the server — connection timed out. Try again shortly." };
+    return { error: "Could not reach Supabase. Check your connection." };
+  }
+  const { data, error } = authResponse;
   if (error || !data.user) return { error: error?.message ?? "The account could not be created." };
   if (!data.session && data.user.identities?.length === 0) return { error: "An account already uses this email. Sign in to the seller studio instead." };
 
@@ -95,12 +116,32 @@ export async function loginSeller(_previous: SellerAuthState, formData: FormData
   let supabase: Awaited<ReturnType<typeof createSupabaseServerClient>>;
   try { supabase = await createSupabaseServerClient(); }
   catch { return { error: "Supabase is not configured yet. Check the project URL and publishable key." }; }
-  const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+  let authResponse;
+  try {
+    authResponse = await withAuthTimeout(
+      supabase.auth.signInWithPassword({ email, password })
+    );
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : "";
+    if (msg.includes("timed out")) return { error: "Could not reach the server — connection timed out. Try again shortly." };
+    return { error: "Could not reach Supabase. Check your connection." };
+  }
+  const { data, error } = authResponse;
   if (error || !data.user) return { error: "Those sign-in details could not be verified." };
   if (data.user.app_metadata?.role === "admin") redirect("/admin");
-  const { data: membership, error: memberError } = await supabase.from("shop_members").select("shop_id").eq("user_id", data.user.id).limit(1).maybeSingle();
+
+  let membershipResult;
+  try {
+    membershipResult = await withAuthTimeout(
+      supabase.from("shop_members").select("shop_id").eq("user_id", data.user.id).limit(1).maybeSingle()
+    );
+  } catch {
+    await supabase.auth.signOut().catch(() => {});
+    return { error: "Connection timed out checking shop membership. Try again." };
+  }
+  const { data: membership, error: memberError } = membershipResult;
   if (memberError || !membership) {
-    await supabase.auth.signOut();
+    await supabase.auth.signOut().catch(() => {});
     return { error: "This account is not connected to a seller shop. Create a seller account or contact support." };
   }
   redirect("/seller");

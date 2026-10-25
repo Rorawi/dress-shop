@@ -26,14 +26,13 @@ let cachedSettings: { data: StoreSettings; expiresAt: number } | null = null;
 let cachedShops: { data: CatalogShop[]; expiresAt: number } | null = null;
 
 /** Runs a Supabase query with a hard timeout; throws on timeout so callers can fall back. */
-async function withTimeout<T>(queryFn: (signal: AbortSignal) => Promise<T>): Promise<T> {
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), SUPABASE_TIMEOUT_MS);
-  try {
-    return await queryFn(controller.signal);
-  } finally {
-    clearTimeout(timer);
-  }
+async function withTimeout<T>(promiseLike: PromiseLike<T>, ms = SUPABASE_TIMEOUT_MS): Promise<T> {
+  return Promise.race([
+    Promise.resolve(promiseLike),
+    new Promise<never>((_, reject) =>
+      setTimeout(() => reject(new Error("Supabase query timed out")), ms)
+    ),
+  ]);
 }
 
 function one<T>(value: T | T[] | null | undefined): T | null {
@@ -77,12 +76,11 @@ export async function getPublicShops(): Promise<CatalogShop[]> {
   if (!hasPublicSupabaseConfig()) return DEMO_SHOPS;
   try {
     const supabase = createPublicSupabaseClient();
-    const { data, error } = await withTimeout((signal) =>
+    const { data, error } = await withTimeout(
       supabase.from("public_shop_profiles")
         .select("id,name,slug,bio,location,whatsapp_number,logo_url,banner_url,instagram_url,snapchat_url,tiktok_url,facebook_url,website_url,accepts_mobile_money,accepts_cash_on_delivery,is_featured")
         .order("is_featured", { ascending: false })
         .order("name", { ascending: true })
-        .abortSignal(signal)
     );
     if (error || !data || data.length === 0) {
       if (error) console.warn("Could not load public shop profiles; using demo shops fallback.", error);
@@ -103,10 +101,12 @@ export async function getPublicShopBySlug(slug: string): Promise<CatalogShop | n
   }
   try {
     const supabase = createPublicSupabaseClient();
-    const { data, error } = await supabase.from("public_shop_profiles")
-      .select("id,name,slug,bio,location,whatsapp_number,logo_url,banner_url,instagram_url,snapchat_url,tiktok_url,facebook_url,website_url,accepts_mobile_money,accepts_cash_on_delivery,is_featured")
-      .eq("slug", slug)
-      .maybeSingle();
+    const { data, error } = await withTimeout(
+      supabase.from("public_shop_profiles")
+        .select("id,name,slug,bio,location,whatsapp_number,logo_url,banner_url,instagram_url,snapchat_url,tiktok_url,facebook_url,website_url,accepts_mobile_money,accepts_cash_on_delivery,is_featured")
+        .eq("slug", slug)
+        .maybeSingle()
+    );
     if (error) throw error;
     if (data) return normalizeShop(data as RawShop);
     return DEMO_SHOPS.find((shop) => shop.slug === slug) ?? null;
@@ -120,10 +120,12 @@ export async function getExpiredPublicShopBySlug(slug: string): Promise<{ name: 
   if (!hasPublicSupabaseConfig()) return null;
   try {
     const supabase = createPublicSupabaseClient();
-    const { data, error } = await supabase.from("public_expired_shop_profiles")
-      .select("name,slug")
-      .eq("slug", slug)
-      .maybeSingle();
+    const { data, error } = await withTimeout(
+      supabase.from("public_expired_shop_profiles")
+        .select("name,slug")
+        .eq("slug", slug)
+        .maybeSingle()
+    );
     if (error) throw error;
     return data ? { name: String(data.name), slug: String(data.slug) } : null;
   } catch (error) {
@@ -183,14 +185,13 @@ export async function getCatalogProducts(): Promise<CatalogProduct[]> {
 
   try {
     const supabase = createPublicSupabaseClient();
-    const { data, error } = await withTimeout((signal) =>
+    const { data, error } = await withTimeout(
       supabase
         .from("products")
         .select("id,name,slug,description,gender,sleeve_length,style,price,compare_at_price,is_featured,discreet_image,created_at,brand:brands(name,slug),category:categories(id,name,slug,department),subcategory:subcategories(name,slug),images:product_images(id,storage_path,source_url,alt_text,position),variants:product_variants(id,size,color,stock),product_tags(tag:tags(name,slug,kind))")
         .eq("is_published", true)
         .eq("is_hidden", false)
         .order("created_at", { ascending: false })
-        .abortSignal(signal)
     );
 
     if (error) {
@@ -203,21 +204,29 @@ export async function getCatalogProducts(): Promise<CatalogProduct[]> {
     }
 
     const assignments = rows.length
-      ? await supabase.from("products").select("id,shop_id").in("id", rows.map((row) => row.id))
+      ? await withTimeout(
+          supabase.from("products").select("id,shop_id").in("id", rows.map((row) => row.id))
+        ).catch((err) => {
+          console.warn("Could not load optional shop assignments for catalog products.", err);
+          return { data: null, error: err };
+        })
       : { data: [], error: null };
-    if (assignments.error) {
-      console.warn("Could not load optional shop assignments for catalog products.", assignments.error);
+    if (assignments.error || !assignments.data) {
       const result = rows.map((row) => normalizeProduct(row, supabase, null));
       cachedProducts = { data: result, expiresAt: Date.now() + CACHE_TTL_MS };
       return result;
     }
 
-    const shopIds = [...new Set((assignments.data ?? []).map((row) => row.shop_id).filter(Boolean))];
+    const shopIds = [...new Set(assignments.data.map((row) => row.shop_id).filter(Boolean))];
     const shops = shopIds.length
-      ? await supabase.from("public_shop_profiles").select("id,name,slug,bio,location,whatsapp_number,logo_url,banner_url,instagram_url,snapchat_url,tiktok_url,facebook_url,website_url,accepts_mobile_money,accepts_cash_on_delivery,is_featured").in("id", shopIds)
+      ? await withTimeout(
+          supabase.from("public_shop_profiles").select("id,name,slug,bio,location,whatsapp_number,logo_url,banner_url,instagram_url,snapchat_url,tiktok_url,facebook_url,website_url,accepts_mobile_money,accepts_cash_on_delivery,is_featured").in("id", shopIds)
+        ).catch((err) => {
+          console.warn("Could not load optional public shop profiles for catalog products.", err);
+          return { data: null, error: err };
+        })
       : { data: [], error: null };
-    if (shops.error) {
-      console.warn("Could not load optional public shop profiles for catalog products.", shops.error);
+    if (shops.error || !shops.data) {
       const result = rows.map((row) => normalizeProduct(row, supabase, null));
       cachedProducts = { data: result, expiresAt: Date.now() + CACHE_TTL_MS };
       return result;
@@ -254,13 +263,12 @@ export async function getStoreSettings(): Promise<StoreSettings> {
 
   try {
     const supabase = createPublicSupabaseClient();
-    const { data, error } = await withTimeout((signal) =>
+    const { data, error } = await withTimeout(
       supabase
         .from("site_settings")
         .select("shop_name,whatsapp_number,currency,announcement_banner,featured_season_tag:tags!site_settings_featured_season_tag_id_fkey(name)")
         .eq("id", true)
         .maybeSingle()
-        .abortSignal(signal)
     );
     if (error) throw error;
     if (!data) return fallback;
