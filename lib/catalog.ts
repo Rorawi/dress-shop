@@ -18,6 +18,12 @@ type RawProduct = {
   images: RawImage[]; variants: RawVariant[]; product_tags: RawTagLink[];
 };
 
+// In-memory cache for fast responsive page navigation
+const CACHE_TTL_MS = 60_000;
+let cachedProducts: { data: CatalogProduct[]; expiresAt: number } | null = null;
+let cachedSettings: { data: StoreSettings; expiresAt: number } | null = null;
+let cachedShops: { data: CatalogShop[]; expiresAt: number } | null = null;
+
 function one<T>(value: T | T[] | null | undefined): T | null {
   return Array.isArray(value) ? value[0] ?? null : value ?? null;
 }
@@ -53,6 +59,9 @@ function normalizeShop(row: RawShop): CatalogShop {
 }
 
 export async function getPublicShops(): Promise<CatalogShop[]> {
+  if (cachedShops && cachedShops.expiresAt > Date.now()) {
+    return cachedShops.data;
+  }
   if (!hasPublicSupabaseConfig()) return DEMO_SHOPS;
   try {
     const supabase = createPublicSupabaseClient();
@@ -64,7 +73,9 @@ export async function getPublicShops(): Promise<CatalogShop[]> {
       if (error) console.warn("Could not load public shop profiles; using demo shops fallback.", error);
       return DEMO_SHOPS;
     }
-    return data.map((row) => normalizeShop(row as RawShop));
+    const result = data.map((row) => normalizeShop(row as RawShop));
+    cachedShops = { data: result, expiresAt: Date.now() + CACHE_TTL_MS };
+    return result;
   } catch (error) {
     console.warn("Could not load public shop profiles; using demo shops fallback.", error);
     return DEMO_SHOPS;
@@ -147,6 +158,9 @@ function normalizeProduct(row: RawProduct, supabase: ReturnType<typeof createPub
 }
 
 export async function getCatalogProducts(): Promise<CatalogProduct[]> {
+  if (cachedProducts && cachedProducts.expiresAt > Date.now()) {
+    return cachedProducts.data;
+  }
   if (!hasPublicSupabaseConfig()) {
     console.warn("Supabase catalog settings are missing; catalog products are using demo fallback.");
     return DEMO_PRODUCTS;
@@ -175,7 +189,9 @@ export async function getCatalogProducts(): Promise<CatalogProduct[]> {
       : { data: [], error: null };
     if (assignments.error) {
       console.warn("Could not load optional shop assignments for catalog products.", assignments.error);
-      return rows.map((row) => normalizeProduct(row, supabase, null));
+      const result = rows.map((row) => normalizeProduct(row, supabase, null));
+      cachedProducts = { data: result, expiresAt: Date.now() + CACHE_TTL_MS };
+      return result;
     }
 
     const shopIds = [...new Set((assignments.data ?? []).map((row) => row.shop_id).filter(Boolean))];
@@ -184,7 +200,9 @@ export async function getCatalogProducts(): Promise<CatalogProduct[]> {
       : { data: [], error: null };
     if (shops.error) {
       console.warn("Could not load optional public shop profiles for catalog products.", shops.error);
-      return rows.map((row) => normalizeProduct(row, supabase, null));
+      const result = rows.map((row) => normalizeProduct(row, supabase, null));
+      cachedProducts = { data: result, expiresAt: Date.now() + CACHE_TTL_MS };
+      return result;
     }
 
     const shopsById = new Map((shops.data ?? []).map((row) => {
@@ -195,7 +213,9 @@ export async function getCatalogProducts(): Promise<CatalogProduct[]> {
       assignment.id,
       shopsById.get(assignment.shop_id) ?? null,
     ] as const));
-    return rows.map((row) => normalizeProduct(row, supabase, shopsByProductId.get(row.id) ?? null));
+    const result = rows.map((row) => normalizeProduct(row, supabase, shopsByProductId.get(row.id) ?? null));
+    cachedProducts = { data: result, expiresAt: Date.now() + CACHE_TTL_MS };
+    return result;
   } catch (error) {
     console.warn("Could not load the public Charwin catalog; using demo catalog fallback.", error);
     return DEMO_PRODUCTS;
@@ -203,6 +223,9 @@ export async function getCatalogProducts(): Promise<CatalogProduct[]> {
 }
 
 export async function getStoreSettings(): Promise<StoreSettings> {
+  if (cachedSettings && cachedSettings.expiresAt > Date.now()) {
+    return cachedSettings.data;
+  }
   const fallback: StoreSettings = {
     ...DEFAULT_STORE_SETTINGS,
     shopName: process.env.NEXT_PUBLIC_SHOP_NAME || DEFAULT_STORE_SETTINGS.shopName,
@@ -222,13 +245,15 @@ export async function getStoreSettings(): Promise<StoreSettings> {
     if (!data) return fallback;
     const raw = data as unknown as RawRecord;
     const season = one(raw.featured_season_tag as { name: string } | { name: string }[] | null);
-    return {
+    const result = {
       shopName: String(raw.shop_name || fallback.shopName),
       whatsappNumber: normalizeWhatsAppNumber(String(raw.whatsapp_number || fallback.whatsappNumber)),
       currency: String(raw.currency || fallback.currency),
       announcementBanner: raw.announcement_banner ? String(raw.announcement_banner) : null,
       featuredSeasonTag: season?.name ?? fallback.featuredSeasonTag,
     };
+    cachedSettings = { data: result, expiresAt: Date.now() + CACHE_TTL_MS };
+    return result;
   } catch (error) {
     console.warn("Could not load Charwin site settings; using public defaults.", error);
     return fallback;
