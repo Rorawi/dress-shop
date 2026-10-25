@@ -20,9 +20,21 @@ type RawProduct = {
 
 // In-memory cache for fast responsive page navigation
 const CACHE_TTL_MS = 60_000;
+const SUPABASE_TIMEOUT_MS = 4_000;
 let cachedProducts: { data: CatalogProduct[]; expiresAt: number } | null = null;
 let cachedSettings: { data: StoreSettings; expiresAt: number } | null = null;
 let cachedShops: { data: CatalogShop[]; expiresAt: number } | null = null;
+
+/** Runs a Supabase query with a hard timeout; throws on timeout so callers can fall back. */
+async function withTimeout<T>(queryFn: (signal: AbortSignal) => Promise<T>): Promise<T> {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), SUPABASE_TIMEOUT_MS);
+  try {
+    return await queryFn(controller.signal);
+  } finally {
+    clearTimeout(timer);
+  }
+}
 
 function one<T>(value: T | T[] | null | undefined): T | null {
   return Array.isArray(value) ? value[0] ?? null : value ?? null;
@@ -65,10 +77,13 @@ export async function getPublicShops(): Promise<CatalogShop[]> {
   if (!hasPublicSupabaseConfig()) return DEMO_SHOPS;
   try {
     const supabase = createPublicSupabaseClient();
-    const { data, error } = await supabase.from("public_shop_profiles")
-      .select("id,name,slug,bio,location,whatsapp_number,logo_url,banner_url,instagram_url,snapchat_url,tiktok_url,facebook_url,website_url,accepts_mobile_money,accepts_cash_on_delivery,is_featured")
-      .order("is_featured", { ascending: false })
-      .order("name", { ascending: true });
+    const { data, error } = await withTimeout((signal) =>
+      supabase.from("public_shop_profiles")
+        .select("id,name,slug,bio,location,whatsapp_number,logo_url,banner_url,instagram_url,snapchat_url,tiktok_url,facebook_url,website_url,accepts_mobile_money,accepts_cash_on_delivery,is_featured")
+        .order("is_featured", { ascending: false })
+        .order("name", { ascending: true })
+        .abortSignal(signal)
+    );
     if (error || !data || data.length === 0) {
       if (error) console.warn("Could not load public shop profiles; using demo shops fallback.", error);
       return DEMO_SHOPS;
@@ -168,12 +183,15 @@ export async function getCatalogProducts(): Promise<CatalogProduct[]> {
 
   try {
     const supabase = createPublicSupabaseClient();
-    const { data, error } = await supabase
-      .from("products")
-      .select("id,name,slug,description,gender,sleeve_length,style,price,compare_at_price,is_featured,discreet_image,created_at,brand:brands(name,slug),category:categories(id,name,slug,department),subcategory:subcategories(name,slug),images:product_images(id,storage_path,source_url,alt_text,position),variants:product_variants(id,size,color,stock),product_tags(tag:tags(name,slug,kind))")
-      .eq("is_published", true)
-      .eq("is_hidden", false)
-      .order("created_at", { ascending: false });
+    const { data, error } = await withTimeout((signal) =>
+      supabase
+        .from("products")
+        .select("id,name,slug,description,gender,sleeve_length,style,price,compare_at_price,is_featured,discreet_image,created_at,brand:brands(name,slug),category:categories(id,name,slug,department),subcategory:subcategories(name,slug),images:product_images(id,storage_path,source_url,alt_text,position),variants:product_variants(id,size,color,stock),product_tags(tag:tags(name,slug,kind))")
+        .eq("is_published", true)
+        .eq("is_hidden", false)
+        .order("created_at", { ascending: false })
+        .abortSignal(signal)
+    );
 
     if (error) {
       console.warn("Could not load products from Supabase; using demo catalog fallback.", error);
@@ -236,11 +254,14 @@ export async function getStoreSettings(): Promise<StoreSettings> {
 
   try {
     const supabase = createPublicSupabaseClient();
-    const { data, error } = await supabase
-      .from("site_settings")
-      .select("shop_name,whatsapp_number,currency,announcement_banner,featured_season_tag:tags!site_settings_featured_season_tag_id_fkey(name)")
-      .eq("id", true)
-      .maybeSingle();
+    const { data, error } = await withTimeout((signal) =>
+      supabase
+        .from("site_settings")
+        .select("shop_name,whatsapp_number,currency,announcement_banner,featured_season_tag:tags!site_settings_featured_season_tag_id_fkey(name)")
+        .eq("id", true)
+        .maybeSingle()
+        .abortSignal(signal)
+    );
     if (error) throw error;
     if (!data) return fallback;
     const raw = data as unknown as RawRecord;
