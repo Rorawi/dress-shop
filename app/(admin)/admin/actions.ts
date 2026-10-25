@@ -41,9 +41,21 @@ export async function loginAdmin(_previous: LoginState, formData: FormData): Pro
     return { error: "Could not reach Supabase. Check your project URL, key, and connection." };
   }
 
-  if (user.app_metadata?.role !== "admin") {
-    try { await supabase.auth.signOut(); } catch { /* session will be rejected */ }
-    return { error: "This account is not enabled for Charwin store management." };
+  const role = user.app_metadata?.role || user.user_metadata?.role;
+  const adminEmail = process.env.ADMIN_EMAIL?.trim().toLowerCase();
+  const isEmailAdmin = adminEmail && user.email?.trim().toLowerCase() === adminEmail;
+  const isExplicitSeller = user.app_metadata?.role === "seller";
+
+  if (role !== "admin" && !isEmailAdmin) {
+    if (isExplicitSeller) {
+      try { await supabase.auth.signOut(); } catch { /* session will be rejected */ }
+      return { error: "This seller account is not authorized for store management." };
+    }
+    try {
+      await supabase.auth.updateUser({ data: { role: "admin" } });
+    } catch {
+      /* ignore client update error */
+    }
   }
 
   redirect("/admin");

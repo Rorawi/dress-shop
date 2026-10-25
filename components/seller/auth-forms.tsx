@@ -46,8 +46,22 @@ export function SellerLoginForm({ notice }: { notice?: string }) {
 }
 
 export function SellerSignupForm({ prohibitedItems }: { prohibitedItems: string[] }) {
-  const [state, action, pending] = useActionState(registerSeller, initial);
-  return <form action={action} className="mt-7 grid gap-4 sm:grid-cols-2">
+  const [state, formAction, pending] = useActionState(registerSeller, initial);
+
+  const handleAction = async (formData: FormData) => {
+    try {
+      await formAction(formData);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      if (msg.includes("Server Action") || msg.includes("Failed to find Server Action") || msg.includes("UnrecognizedActionError")) {
+        window.location.reload();
+        return;
+      }
+      throw err;
+    }
+  };
+
+  return <form action={handleAction} className="mt-7 grid gap-4 sm:grid-cols-2">
     <label className="block text-sm font-medium">Shop name<input className={field} name="shop_name" required maxLength={180}/></label>
     <label className="block text-sm font-medium">Your name<input className={field} name="owner_name" required maxLength={180} autoComplete="name"/></label>
     <label className="block text-sm font-medium">Email<input className={field} type="email" name="email" required autoComplete="email"/></label>

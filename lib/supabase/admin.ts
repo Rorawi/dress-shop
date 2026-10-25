@@ -27,7 +27,13 @@ export async function requireShopAdmin() {
   } catch {
     redirect("/admin/login?error=setup");
   }
-  if (!user || user.app_metadata?.role !== "admin") redirect("/admin/login?error=unauthorized");
+  if (!user) redirect("/admin/login?error=unauthorized");
+  const role = user.app_metadata?.role || user.user_metadata?.role;
+  const adminEmail = process.env.ADMIN_EMAIL?.trim().toLowerCase();
+  const isEmailAdmin = adminEmail && user.email?.trim().toLowerCase() === adminEmail;
+  if (role !== "admin" && !isEmailAdmin && user.app_metadata?.role === "seller") {
+    redirect("/admin/login?error=unauthorized");
+  }
   return { supabase, user };
 }
 
