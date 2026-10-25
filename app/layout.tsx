@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import { Playfair_Display, Inter } from "next/font/google";
 import PwaInstallPrompt from "@/components/pwa-install-prompt";
-import ActionErrorRecovery from "@/components/common/action-error-recovery";
 
 import "./globals.css";
 
@@ -56,7 +55,11 @@ export default function RootLayout({
   return (
     <html lang="en-GH" className={`${playfair.variable} ${inter.variable} h-full antialiased`}>
       <body className="min-h-full flex flex-col">
-        <ActionErrorRecovery />
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `window.addEventListener('unhandledrejection',function(e){var m=(e.reason&&(e.reason.message||e.reason))||'';if(typeof m==='string'&&m.indexOf('Server Action')!==-1&&(m.indexOf('not found')!==-1||m.indexOf('Failed to find')!==-1||m.indexOf('UnrecognizedActionError')!==-1)){e.preventDefault();window.location.reload();}});window.addEventListener('error',function(e){var m=(e&&(e.message||(e.error&&e.error.message)))||'';if(typeof m==='string'&&m.indexOf('Server Action')!==-1&&(m.indexOf('not found')!==-1||m.indexOf('Failed to find')!==-1||m.indexOf('UnrecognizedActionError')!==-1)){e.preventDefault();window.location.reload();}});`,
+          }}
+        />
         {children}
         <PwaInstallPrompt />
       </body>
