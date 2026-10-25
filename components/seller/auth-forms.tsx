@@ -1,15 +1,41 @@
 "use client";
 
 import Link from "next/link";
-import { useActionState } from "react";
+import { useActionState, useEffect } from "react";
 import { loginSeller, registerSeller, type SellerAuthState } from "@/app/(seller)/seller/actions";
 
 const field = "mt-2 w-full rounded-xl border border-[#e6e0eb] bg-white px-4 py-3 text-sm outline-none focus:border-[#8b5bc7] focus:ring-4 focus:ring-purple-100";
 const initial: SellerAuthState = {};
 
 export function SellerLoginForm({ notice }: { notice?: string }) {
-  const [state, action, pending] = useActionState(loginSeller, initial);
-  return <form action={action} className="mt-7 space-y-5">
+  const [state, formAction, pending] = useActionState(loginSeller, initial);
+
+  useEffect(() => {
+    const handleRejection = (event: PromiseRejectionEvent) => {
+      const msg = String(event.reason?.message || event.reason || "");
+      if (msg.includes("Server Action") || msg.includes("Failed to find Server Action") || msg.includes("UnrecognizedActionError")) {
+        event.preventDefault();
+        window.location.reload();
+      }
+    };
+    window.addEventListener("unhandledrejection", handleRejection);
+    return () => window.removeEventListener("unhandledrejection", handleRejection);
+  }, []);
+
+  const handleAction = async (formData: FormData) => {
+    try {
+      await formAction(formData);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      if (msg.includes("Server Action") || msg.includes("Failed to find Server Action") || msg.includes("UnrecognizedActionError")) {
+        window.location.reload();
+        return;
+      }
+      throw err;
+    }
+  };
+
+  return <form action={handleAction} className="mt-7 space-y-5">
     {notice === "check-email" && <p role="status" className="rounded-xl bg-emerald-50 px-4 py-3 text-sm text-emerald-900">Your shop is registered. Check your email to verify your sign-in, then return here.</p>}
     <label className="block text-sm font-medium">Email<input className={field} type="email" name="email" autoComplete="username" required/></label>
     <label className="block text-sm font-medium">Password<input className={field} type="password" name="password" autoComplete="current-password" required/></label>
