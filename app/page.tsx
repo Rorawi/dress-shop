@@ -3,6 +3,7 @@ import Link from "next/link";
 import { ArrowRight, Sparkles } from "lucide-react";
 import CatalogProductGrid from "@/components/storefront/CatalogProductGrid";
 import CategorySlider from "@/components/storefront/CategorySlider";
+import SellerInvitationSection from "@/components/storefront/SellerInvitationSection";
 import StorefrontFrame from "@/components/storefront/StorefrontFrame";
 import { getCatalogData } from "@/lib/catalog";
 
@@ -92,6 +93,8 @@ export default async function HomePage() {
     </section>
 
     {popular.length > 0 && <section className="bg-[#FCFBFD] py-14 sm:py-20"><div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8"><div className="mb-8 flex items-end justify-between sm:mb-10"><div><p className="mb-2 text-[10px] font-semibold uppercase tracking-[.2em] text-[#8B5BC7]">Loved around here</p><h2 className="font-[family-name:var(--font-playfair)] text-3xl font-medium sm:text-4xl">Popular picks</h2><p className="mt-2 text-sm text-[#625B68]">Pieces people keep coming back to.</p></div><Link href="/shop?tag=Popular" className="hidden items-center gap-2 pb-1 text-xs font-semibold text-[#55239A] sm:inline-flex">See what’s loved <ArrowRight size={14} /></Link></div><CatalogProductGrid products={popular} currency={settings.currency} /></div></section>}
+
+    <SellerInvitationSection />
 
     <section className="relative overflow-hidden bg-[#35115F] px-4 py-16 text-center text-white sm:py-24">
       <div className="pointer-events-none absolute left-[8%] top-0 h-64 w-64 rounded-full bg-[#8B5BC7]/20 blur-3xl" /><div className="pointer-events-none absolute bottom-[-7rem] right-[8%] h-72 w-72 rounded-full bg-[#55239A] blur-3xl" />

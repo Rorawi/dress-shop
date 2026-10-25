@@ -35,6 +35,9 @@ export default function StorefrontHeader() {
           {links.map((link) => <Link key={link.href} href={link.href} className="text-[13px] font-medium text-[#625B68] transition hover:text-[#55239A]">{link.label}</Link>)}
         </nav>
         <div className="flex items-center gap-1 sm:gap-3">
+          <Link href="/seller/signup" className="hidden lg:inline-flex items-center gap-1.5 rounded-full border border-[#55239A]/20 bg-[#F5F1F8] px-3.5 py-1.5 text-xs font-semibold text-[#55239A] transition hover:bg-[#55239A] hover:text-white">
+            Sell with us
+          </Link>
           <Link href="/shop" className="rounded-full p-2.5 text-[#17141C] transition hover:bg-[#F5F1F8] hover:text-[#55239A]" aria-label="Search products"><Search size={20} /></Link>
           <Link href="/cart" className="relative rounded-full p-2.5 text-[#17141C] transition hover:bg-[#F5F1F8] hover:text-[#55239A]" aria-label={`Shopping bag${count ? `, ${count} items` : ""}`}>
             <ShoppingBag size={21} />
@@ -44,6 +47,7 @@ export default function StorefrontHeader() {
       </div>
       {mobileOpen && <nav className="flex flex-col gap-1 border-t border-[#E6E0EB] bg-white px-5 py-3 md:hidden" aria-label="Mobile navigation">
         {links.map((link) => <Link key={link.href} href={link.href} className="rounded-lg px-3 py-3 text-sm font-medium text-[#625B68] hover:bg-[#F5F1F8] hover:text-[#55239A]" onClick={() => setMobileOpen(false)}>{link.label}</Link>)}
+        <Link href="/seller/signup" className="rounded-lg px-3 py-3 text-sm font-semibold text-[#55239A] hover:bg-[#F5F1F8]" onClick={() => setMobileOpen(false)}>Sell with Charwin →</Link>
         <Link href="/cart" className="rounded-lg px-3 py-3 text-sm font-medium text-[#625B68] hover:bg-[#F5F1F8]" onClick={() => setMobileOpen(false)}>Your bag{count ? ` (${count})` : ""}</Link>
       </nav>}
     </header>
