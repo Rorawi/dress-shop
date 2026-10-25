@@ -17,8 +17,9 @@ export default async function SellerQuickUploadPage({ searchParams }: { searchPa
   if (sharedResult.data) {
     const { data: product } = await supabase.from("products").select("id,name,description,category_id,subcategory_id,gender,price,moderation_verdict,moderation_reason,product_images(storage_path,source_url,alt_text,position)").eq("id", sharedResult.data.product_id).eq("shop_id", shop.id).maybeSingle();
     if (product) {
-      const images = (product.product_images ?? []).sort((a, b) => a.position - b.position).map((image) => image.source_url ?? (image.storage_path ? supabase.storage.from("product-images").getPublicUrl(image.storage_path).data.publicUrl : "")).filter(Boolean);
-      shared = { ...product, product_images: undefined, images, caption: sharedResult.data.caption };
+      const { product_images, ...rest } = product;
+      const images = (product_images ?? []).sort((a, b) => a.position - b.position).map((image) => image.source_url ?? (image.storage_path ? supabase.storage.from("product-images").getPublicUrl(image.storage_path).data.publicUrl : "")).filter(Boolean);
+      shared = { ...rest, images, caption: sharedResult.data.caption };
     }
   }
   return <QuickUpload categories={categoryResult.data ?? []} subcategories={subcategoryResult.data ?? []} brands={brandResult.data ?? []} tags={tagResult.data ?? []} shopId={shop.id} initialShared={shared} shareError={query.error === "files" ? "Share one to eight image files from another app." : undefined}/>;

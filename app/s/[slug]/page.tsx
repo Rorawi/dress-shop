@@ -2,7 +2,15 @@ import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ArrowLeft, Globe2, Instagram, MapPin, MessageCircle } from "lucide-react";
+import { ArrowLeft, Globe2, MapPin, MessageCircle } from "lucide-react";
+
+const InstagramIcon = ({ size = 14 }: { size?: number }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <rect width="20" height="20" x="2" y="2" rx="5" ry="5" />
+    <path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z" />
+    <line x1="17.5" x2="17.51" y1="6.5" y2="6.5" />
+  </svg>
+);
 import CatalogProductGrid from "@/components/storefront/CatalogProductGrid";
 import ReportDialog from "@/components/storefront/ReportDialog";
 import StorefrontFrame from "@/components/storefront/StorefrontFrame";
@@ -57,7 +65,7 @@ export default async function ShopStorefrontPage({ params }: { params: Promise<{
         {chatUrl && <a href={chatUrl} target="_blank" rel="noreferrer" className="inline-flex w-full items-center justify-center gap-2 rounded-full bg-[#55239A] px-6 py-3.5 text-sm font-semibold text-white transition hover:bg-[#35115F] sm:w-auto"><MessageCircle size={18} /> Chat with shop</a>}
       </div>
       <div className="mt-7 grid gap-6 border-b border-[#E6E0EB] px-4 pb-7 sm:grid-cols-[1fr_auto] sm:px-8">
-        <div>{shop.bio && <p className="max-w-3xl whitespace-pre-line text-sm leading-7 text-[#625B68]">{shop.bio}</p>}<div className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-2">{socials.map(([label, url]) => <a key={label} href={url} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1.5 text-xs font-medium text-[#55239A] hover:underline">{label === "Instagram" ? <Instagram size={14} /> : label === "Website" ? <Globe2 size={14} /> : null}{label}</a>)}</div></div>
+        <div>{shop.bio && <p className="max-w-3xl whitespace-pre-line text-sm leading-7 text-[#625B68]">{shop.bio}</p>}<div className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-2">{socials.map(([label, url]) => <a key={label} href={url} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1.5 text-xs font-medium text-[#55239A] hover:underline">{label === "Instagram" ? <InstagramIcon size={14} /> : label === "Website" ? <Globe2 size={14} /> : null}{label}</a>)}</div></div>
         <div className="self-end"><ReportDialog shopId={shop.id} subjectName={shop.name} subjectType="shop" /></div>
       </div>
     </section>

@@ -1,5 +1,6 @@
 import { createPublicSupabaseClient, hasPublicSupabaseConfig } from "@/lib/supabase/public";
 import { DEFAULT_STORE_SETTINGS, type CatalogCategory, type CatalogImage, type CatalogProduct, type CatalogShop, type CatalogTag, type CatalogVariant, type StoreSettings } from "@/lib/catalog-types";
+import { DEMO_PRODUCTS, DEMO_SHOPS } from "@/lib/demo-catalog";
 import { normalizeWhatsAppNumber } from "@/lib/whatsapp";
 
 type RawRecord = Record<string, unknown>;
@@ -19,14 +20,6 @@ type RawProduct = {
 
 function one<T>(value: T | T[] | null | undefined): T | null {
   return Array.isArray(value) ? value[0] ?? null : value ?? null;
-}
-
-function isDemoImage(url: string) {
-  try {
-    return new URL(url).hostname === "images.unsplash.com";
-  } catch {
-    return false;
-  }
 }
 
 function normalizeShop(row: RawShop): CatalogShop {
@@ -60,23 +53,28 @@ function normalizeShop(row: RawShop): CatalogShop {
 }
 
 export async function getPublicShops(): Promise<CatalogShop[]> {
-  if (!hasPublicSupabaseConfig()) return [];
+  if (!hasPublicSupabaseConfig()) return DEMO_SHOPS;
   try {
     const supabase = createPublicSupabaseClient();
     const { data, error } = await supabase.from("public_shop_profiles")
       .select("id,name,slug,bio,location,whatsapp_number,logo_url,banner_url,instagram_url,snapchat_url,tiktok_url,facebook_url,website_url,accepts_mobile_money,accepts_cash_on_delivery,is_featured")
       .order("is_featured", { ascending: false })
       .order("name", { ascending: true });
-    if (error) throw error;
-    return (data ?? []).map((row) => normalizeShop(row as RawShop));
+    if (error || !data || data.length === 0) {
+      if (error) console.warn("Could not load public shop profiles; using demo shops fallback.", error);
+      return DEMO_SHOPS;
+    }
+    return data.map((row) => normalizeShop(row as RawShop));
   } catch (error) {
-    console.warn("Could not load public shop profiles.", error);
-    return [];
+    console.warn("Could not load public shop profiles; using demo shops fallback.", error);
+    return DEMO_SHOPS;
   }
 }
 
 export async function getPublicShopBySlug(slug: string): Promise<CatalogShop | null> {
-  if (!hasPublicSupabaseConfig()) return null;
+  if (!hasPublicSupabaseConfig()) {
+    return DEMO_SHOPS.find((shop) => shop.slug === slug) ?? null;
+  }
   try {
     const supabase = createPublicSupabaseClient();
     const { data, error } = await supabase.from("public_shop_profiles")
@@ -84,10 +82,11 @@ export async function getPublicShopBySlug(slug: string): Promise<CatalogShop | n
       .eq("slug", slug)
       .maybeSingle();
     if (error) throw error;
-    return data ? normalizeShop(data as RawShop) : null;
+    if (data) return normalizeShop(data as RawShop);
+    return DEMO_SHOPS.find((shop) => shop.slug === slug) ?? null;
   } catch (error) {
     console.warn("Could not load the requested public shop profile.", error);
-    return null;
+    return DEMO_SHOPS.find((shop) => shop.slug === slug) ?? null;
   }
 }
 
@@ -117,7 +116,7 @@ function normalizeProduct(row: RawProduct, supabase: ReturnType<typeof createPub
       altText: image.alt_text || row.name,
       position: image.position,
     }))
-    .filter((image) => image.url && !isDemoImage(image.url));
+    .filter((image) => Boolean(image.url));
 
   return {
     id: row.id,
@@ -149,8 +148,8 @@ function normalizeProduct(row: RawProduct, supabase: ReturnType<typeof createPub
 
 export async function getCatalogProducts(): Promise<CatalogProduct[]> {
   if (!hasPublicSupabaseConfig()) {
-    console.warn("Supabase catalog settings are missing; catalog products are unavailable.");
-    return [];
+    console.warn("Supabase catalog settings are missing; catalog products are using demo fallback.");
+    return DEMO_PRODUCTS;
   }
 
   try {
@@ -162,14 +161,19 @@ export async function getCatalogProducts(): Promise<CatalogProduct[]> {
       .eq("is_hidden", false)
       .order("created_at", { ascending: false });
 
-    if (error) throw error;
+    if (error) {
+      console.warn("Could not load products from Supabase; using demo catalog fallback.", error);
+      return DEMO_PRODUCTS;
+    }
     const rows = (data ?? []) as unknown as RawProduct[];
+    if (rows.length === 0) {
+      return DEMO_PRODUCTS;
+    }
+
     const assignments = rows.length
       ? await supabase.from("products").select("id,shop_id").in("id", rows.map((row) => row.id))
       : { data: [], error: null };
     if (assignments.error) {
-      // Keep the existing single-shop catalog usable while the optional
-      // marketplace migration is being applied to a production database.
       console.warn("Could not load optional shop assignments for catalog products.", assignments.error);
       return rows.map((row) => normalizeProduct(row, supabase, null));
     }
@@ -193,8 +197,8 @@ export async function getCatalogProducts(): Promise<CatalogProduct[]> {
     ] as const));
     return rows.map((row) => normalizeProduct(row, supabase, shopsByProductId.get(row.id) ?? null));
   } catch (error) {
-    console.warn("Could not load the public Charwin catalog; showing the empty catalog fallback.", error);
-    return [];
+    console.warn("Could not load the public Charwin catalog; using demo catalog fallback.", error);
+    return DEMO_PRODUCTS;
   }
 }
 

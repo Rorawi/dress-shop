@@ -3,7 +3,7 @@ import { createHash } from "node:crypto";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 export async function consumePublicActionLimit(
-  supabase: SupabaseClient,
+  supabase: SupabaseClient<any, any, any>,
   request: Request,
   action: "order" | "report",
   limit: number,

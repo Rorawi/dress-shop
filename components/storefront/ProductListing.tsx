@@ -11,8 +11,44 @@ type Filters = Record<string, string | undefined>;
 
 const titleCase = (value: string) => value.replaceAll("-", " ").replace(/\b\w/g, (letter) => letter.toUpperCase());
 const normalize = (value: string) => value.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim();
-const preferredCategoryOrder = ["boxers", "singlets", "t-shirts", "shirts", "matching-sets", "jumpsuits"];
+const preferredCategoryOrder = [
+  "dresses",
+  "shirts",
+  "t-shirts",
+  "polos",
+  "boxers",
+  "singlets",
+  "briefs",
+  "trousers",
+  "shorts",
+  "jackets",
+  "handbags",
+  "totes",
+  "sneakers",
+  "sandals",
+  "matching-sets",
+  "jumpsuits",
+];
 const PAGE_SIZE = 12;
+
+function matchesDepartment(filterDept: string, product: CatalogProduct): boolean {
+  const norm = normalize(filterDept);
+  return normalize(product.category.department) === norm || normalize(product.category.slug) === norm;
+}
+
+function matchesCategory(filterCat: string, product: CatalogProduct): boolean {
+  const norm = normalize(filterCat);
+  const subSlug = product.subcategory?.slug ? normalize(product.subcategory.slug) : "";
+  const catSlug = normalize(product.category.slug);
+  const dept = normalize(product.category.department);
+
+  if (subSlug === norm || catSlug === norm) return true;
+  if (dept === norm) return true;
+  if (norm === "shirts" && (subSlug === "t-shirts" || subSlug === "polos" || subSlug === "shirts-and-tops" || catSlug === "shirts-and-tops")) {
+    return true;
+  }
+  return false;
+}
 
 function withoutPage(filters: Filters): Filters {
   const next = { ...filters };
@@ -103,8 +139,8 @@ export default function ProductListing({ products, initialFilters = {}, currency
   const filtered = useMemo(() => {
     const result = products.filter((product) => {
       if (filters.q && !fuzzyMatch(filters.q, product)) return false;
-      if (filters.department && filters.department !== product.category.department) return false;
-      if (filters.category && filters.category !== product.subcategory?.slug && filters.category !== product.category.slug) return false;
+      if (filters.department && !matchesDepartment(filters.department, product)) return false;
+      if (filters.category && !matchesCategory(filters.category, product)) return false;
       if (filters.gender && filters.gender !== product.gender) return false;
       if (filters.brand && filters.brand !== product.brand?.name) return false;
       if (filters.shop && filters.shop !== product.shop?.slug) return false;
@@ -133,7 +169,17 @@ export default function ProductListing({ products, initialFilters = {}, currency
   const pageNumbers = Array.from({ length: Math.min(5, pageCount) }, (_, index) => pageWindowStart + index);
 
   const selectedDepartment = CATALOG_DEPARTMENTS.find((department) => department.value === filters.department);
-  const heading = filters.tag === "Thrift Finds" ? "Thrift Finds" : filters.department === "underwear" ? "Underwear & intimates" : selectedDepartment?.label ?? (filters.category ? titleCase(filters.category) : "The collection");
+  const heading = filters.tag === "Thrift Finds"
+    ? "Thrift Finds"
+    : filters.department === "underwear"
+    ? "Underwear & intimates"
+    : selectedDepartment?.label ?? (
+        filters.category === "shirts"
+          ? "Shirts & tops"
+          : filters.category
+          ? titleCase(filters.category)
+          : "The collection"
+      );
   const emptyMessage = filters.tag === "Thrift Finds"
     ? "No thrift pieces are listed just yet. Check back soon."
     : "No products found. Try another search or clear some filters.";
