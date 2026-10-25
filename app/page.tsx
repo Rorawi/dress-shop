@@ -1,6 +1,8 @@
 import Image from "next/image";
 import Link from "next/link";
 import { ArrowRight, Sparkles } from "lucide-react";
+
+export const dynamic = "force-dynamic";
 import CatalogProductGrid from "@/components/storefront/CatalogProductGrid";
 import CategorySlider from "@/components/storefront/CategorySlider";
 import SellerInvitationSection from "@/components/storefront/SellerInvitationSection";
